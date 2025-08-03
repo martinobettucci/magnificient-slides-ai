@@ -185,7 +185,9 @@ Previous Version Context:
 - Previous Comment: {{{${previousComment || 'Initial generation'}}}}
 - User Feedback: {{{${userComment}}}}
 
-Please take the user's feedback into account and improve the page accordingly. The user wants you to modify the existing design based on their specific requests.`;
+Please take the user's feedback into account and improve the page accordingly. The user wants you to modify the existing design based on their specific requests.
+
+`;
   }
 
   prompt += `
