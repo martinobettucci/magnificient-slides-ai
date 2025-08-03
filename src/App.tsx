@@ -33,8 +33,8 @@ function App() {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-hidden">
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 80px)' }}>
         {appState.view === 'list' && (
           <InfographicsList
             onSelectInfographic={handleSelectInfographic}
@@ -60,9 +60,9 @@ function App() {
       </div>
       
       {/* App Footer */}
-      <footer className="bg-gradient-to-r from-slate-900 via-gray-900 to-slate-900 text-white py-4 border-t border-gray-800 flex-shrink-0">
+      <footer className="bg-gradient-to-r from-slate-900 via-gray-900 to-slate-900 text-white py-4 border-t border-gray-800 h-20 flex-shrink-0">
         <div className="container mx-auto px-6">
-          <div className="flex items-center justify-center space-x-2 text-sm">
+          <div className="flex items-center justify-center space-x-2 text-sm h-full">
             <span className="text-gray-300">Made by</span>
             <span className="font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
               P2Enjoy SAS
