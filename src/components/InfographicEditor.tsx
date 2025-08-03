@@ -342,6 +342,15 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               </button>
             )}
             <button
+              onClick={handleGenerateAllHtml}
+              className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-white bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all duration-300 font-medium overflow-hidden"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                {selectedPageIds.size > 0 ? `Generate Selected (${selectedPageIds.size})` : 'Generate All'}
+              </span>
+            </button>
+            <button
               onClick={() => setShowMarkdownImporter(true)}
               className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300 font-medium overflow-hidden"
             >
