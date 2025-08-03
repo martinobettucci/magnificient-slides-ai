@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Play, Settings, Zap } from 'lucide-react';
+import { ArrowLeft, Plus, Play, Settings, Zap, Upload } from 'lucide-react';
 import { infographicsService, Infographic, InfographicPage, supabase } from '../../lib/supabase';
 import { InfographicSlideshow } from '../InfographicSlideshow';
 import { PagesSidebar } from './PagesSidebar';
 import { PageEditor } from './PageEditor';
 import { PageFormModal } from './PageFormModal';
+import { MarkdownImporter } from './MarkdownImporter';
 
 interface InfographicEditorProps {
   infographic: Infographic;
@@ -18,6 +19,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   const [error, setError] = useState<string | null>(null);
   const [selectedPage, setSelectedPage] = useState<InfographicPage | null>(null);
   const [showPageForm, setShowPageForm] = useState(false);
+  const [showMarkdownImporter, setShowMarkdownImporter] = useState(false);
   const [showSlideshow, setShowSlideshow] = useState(false);
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(new Set());
   const [pageRecentStatusMap, setPageRecentStatusMap] = useState<Map<string, string>>(new Map());
@@ -346,6 +348,15 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                 Add Page
               </span>
             </button>
+            <button
+              onClick={() => setShowMarkdownImporter(true)}
+              className="group inline-flex items-center justify-center px-3 py-2.5 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 font-medium overflow-hidden"
+            >
+              <Upload className="w-4 h-4" />
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                Import Markdown
+              </span>
+            </button>
           </div>
         </div>
       </div>
@@ -399,6 +410,17 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
             loadPages();
           }}
           onCancel={() => setShowPageForm(false)}
+        />
+      )}
+
+      {showMarkdownImporter && (
+        <MarkdownImporter
+          infographicId={infographic.id}
+          onImport={() => {
+            setShowMarkdownImporter(false);
+            loadPages();
+          }}
+          onCancel={() => setShowMarkdownImporter(false)}
         />
       )}
 
