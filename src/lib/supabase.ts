@@ -50,9 +50,19 @@ export interface InfographicPage {
   title: string;
   content_markdown: string;
   generated_html: string;
+  last_generation_comment: string;
   page_order: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface InfographicPageHistory {
+  id: string;
+  infographic_page_id: string;
+  generated_html: string;
+  user_comment: string;
+  user_id: string;
+  created_at: string;
 }
 
 export interface GenerationQueueItem {
@@ -60,6 +70,7 @@ export interface GenerationQueueItem {
   infographic_page_id: string;
   user_id: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
+  user_comment: string;
   requested_at: string;
   processed_at: string | null;
   error_message: string | null;
@@ -178,9 +189,9 @@ export const infographicsService = {
   },
 
   // Generate page HTML using the edge function
-  async generatePageHtml(pageId: string) {
+  async generatePageHtml(pageId: string, userComment?: string) {
     console.log('=== generatePageHtml Start ===');
-    console.log('Enqueueing generation for page ID:', pageId);
+    console.log('Enqueueing generation for page ID:', pageId, 'with comment:', userComment);
     
     try {
       // Get current user
@@ -212,6 +223,7 @@ export const infographicsService = {
         .insert({
           infographic_page_id: pageId,
           user_id: user.id,
+          user_comment: userComment || '',
           status: 'pending'
         })
         .select()
@@ -427,5 +439,17 @@ export const infographicsService = {
       });
       throw error;
     }
+  },
+
+  // Get page history
+  async getPageHistory(pageId: string) {
+    const { data, error } = await supabase
+      .from('infographic_pages_history')
+      .select('*')
+      .eq('infographic_page_id', pageId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data as InfographicPageHistory[];
   },
 };

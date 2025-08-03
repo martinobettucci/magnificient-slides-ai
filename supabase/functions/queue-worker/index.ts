@@ -18,6 +18,7 @@ interface QueueItem {
   infographic_page_id: string;
   user_id: string;
   status: string;
+  user_comment: string;
   requested_at: string;
 }
 
@@ -25,6 +26,8 @@ interface InfographicPage {
   id: string;
   title: string;
   content_markdown: string;
+  generated_html: string;
+  last_generation_comment: string;
   infographic_id: string;
 }
 
@@ -76,18 +79,42 @@ async function processQueueItem(queueItem: QueueItem): Promise<void> {
       throw new Error(`Failed to fetch infographic: ${infographicError?.message || 'Infographic not found'}`);
     }
 
+    // If there's existing HTML and this is a regeneration with a comment, save current version to history
+    if (page.generated_html && queueItem.user_comment) {
+      console.log('Saving current version to history before regeneration');
+      const { error: historyError } = await supabase
+        .from('infographic_pages_history')
+        .insert({
+          infographic_page_id: page.id,
+          generated_html: page.generated_html,
+          user_comment: page.last_generation_comment || 'Initial generation',
+          user_id: queueItem.user_id
+        });
+      
+      if (historyError) {
+        console.error('Failed to save to history:', historyError);
+        // Don't fail the generation, just log the error
+      }
+    }
+
     // Generate HTML using OpenAI
     const generatedHtml = await generateHtmlWithOpenAI({
       title: page.title,
       contentMarkdown: page.content_markdown,
       styleDescription: infographic.style_description,
       projectDescription: infographic.description,
+      previousHtml: page.generated_html,
+      previousComment: page.last_generation_comment,
+      userComment: queueItem.user_comment,
     });
 
     // Update page with generated HTML
     const { error: updatePageError } = await supabase
       .from('infographic_pages')
-      .update({ generated_html: generatedHtml })
+      .update({ 
+        generated_html: generatedHtml,
+        last_generation_comment: queueItem.user_comment || ''
+      })
       .eq('id', queueItem.infographic_page_id);
 
     if (updatePageError) {
@@ -125,10 +152,13 @@ async function generateHtmlWithOpenAI(params: {
   contentMarkdown: string;
   styleDescription: string;
   projectDescription: string;
+  previousHtml?: string;
+  previousComment?: string;
+  userComment?: string;
 }): Promise<string> {
-  const { title, contentMarkdown, styleDescription, projectDescription } = params;
+  const { title, contentMarkdown, styleDescription, projectDescription, previousHtml, previousComment, userComment } = params;
 
-  const prompt = `You are an expert infographic designer. Create a beautiful, modern HTML page for an infographic slide.
+  let prompt = `You are an expert infographic designer. Create a beautiful, modern HTML page for an infographic slide.
 
 Project Context:
 - Project Description: {{{
@@ -142,7 +172,23 @@ ${styleDescription}
 Content to Transform:
 {{{
 ${contentMarkdown}
-}}}
+}}}`;
+
+  // If this is a regeneration with user feedback, include context
+  if (previousHtml && userComment) {
+    prompt += `
+
+REGENERATION REQUEST:
+This is a regeneration of an existing page. The user has provided feedback for improvements.
+
+Previous Version Context:
+- Previous Comment: {{{${previousComment || 'Initial generation'}}}}
+- User Feedback: {{{${userComment}}}}
+
+Please take the user's feedback into account and improve the page accordingly. The user wants you to modify the existing design based on their specific requests.`;
+  }
+
+  prompt += `
 
 Requirements:
 1. Create a complete HTML page with embedded CSS
@@ -154,7 +200,8 @@ Requirements:
 7. Follow the style guidelines provided
 8. Use appropriate icons, charts, or visual elements where relevant
 9. Ensure high contrast and readability
-10. The page should be self-contained (no external dependencies)`;
+10. The page should be self-contained (no external dependencies)${userComment ? `
+11. IMPORTANT: Address the user's specific feedback: ${userComment}` : ''}`;
 
   const requestBody = {
     model: 'o3',
