@@ -195,26 +195,6 @@ export function PagesSidebar({
           </div>
         )}
 
-        {(selectedPageIds.size > 0 || pages.some(page => !page.generated_html && !pageRecentStatusMap.has(page.id))) && !isEditingOrder && (
-          <div className="mb-4">
-            <button
-              onClick={onGenerateAllHtml}
-              disabled={activeQueueCount > 0}
-              className="group w-full inline-flex items-center justify-center px-3 py-2.5 text-white bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl hover:from-purple-600 hover:to-pink-700 disabled:opacity-50 transition-all duration-300 font-medium overflow-hidden"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
-                {activeQueueCount > 0 
-                  ? `Processing ${activeQueueCount}...` 
-                  : selectedPageIds.size > 0 
-                    ? `Generate Selected (${selectedPageIds.size})`
-                    : 'Generate All'
-                }
-              </span>
-            </button>
-          </div>
-        )}
-        
         {pages.length === 0 ? (
           <div className="text-center py-12">
             <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
