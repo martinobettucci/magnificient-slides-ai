@@ -452,4 +452,16 @@ export const infographicsService = {
     if (error) throw error;
     return data as InfographicPageHistory[];
   },
+
+  // Create page history entry
+  async createPageHistory(historyEntry: Omit<InfographicPageHistory, 'id' | 'created_at'>) {
+    const { data, error } = await supabase
+      .from('infographic_pages_history')
+      .insert(historyEntry)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data as InfographicPageHistory;
+  },
 };
