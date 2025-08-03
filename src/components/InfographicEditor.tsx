@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, FileText, Eye, Code, Trash2, Edit3, Play, Sparkles, Save, X, Settings, CheckSquare, Square, Zap } from 'lucide-react';
+import { ArrowLeft, Plus, FileText, Eye, Code, Trash2, Edit3, Play, Sparkles, Save, X, Settings, CheckSquare, Square, Zap, FileDown } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -43,6 +43,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   const [activeQueueCount, setActiveQueueCount] = useState(0);
   const [triggeringWorker, setTriggeringWorker] = useState(false);
   const [realtimeSubscription, setRealtimeSubscription] = useState<any>(null);
+  const [showMarkdownImporter, setShowMarkdownImporter] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -441,6 +442,15 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                 </span>
               </button>
             )}
+            <button
+              onClick={() => setShowMarkdownImporter(true)}
+              className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300 font-medium overflow-hidden"
+            >
+              <FileDown className="w-4 h-4" />
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+                Import Markdown
+              </span>
+            </button>
             <button
               onClick={() => setShowPageForm(true)}
               className="group inline-flex items-center justify-center px-3 py-2.5 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 font-medium overflow-hidden"
