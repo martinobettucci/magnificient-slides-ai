@@ -643,7 +643,7 @@ function PageEditor({
               <textarea
                 value={formData.content_markdown}
                 onChange={(e) => setFormData(prev => ({ ...prev, content_markdown: e.target.value }))}
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm transition-all bg-white shadow-sm resize-none"
+                className="flex-1 min-h-0 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm transition-all bg-white shadow-sm resize-none"
                 placeholder="Enter your content in Markdown format..."
               />
             </div>
