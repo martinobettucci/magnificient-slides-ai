@@ -224,9 +224,12 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
           <div className="flex items-center">
             <button
               onClick={onBack}
-              className="mr-4 p-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
+              className="group mr-4 inline-flex items-center p-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all duration-300 overflow-hidden"
             >
               <ArrowLeft className="w-5 h-5" />
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+                Back
+              </span>
             </button>
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
@@ -243,39 +246,47 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
           <div className="flex items-center space-x-3">
             <button
               onClick={onEdit}
-              className="inline-flex items-center justify-center px-4 py-2.5 h-10 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all font-medium"
+              className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300 font-medium overflow-hidden"
             >
               <Edit3 className="w-4 h-4 mr-2" />
-              Edit Project
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                Edit Project
+              </span>
             </button>
             <button
               onClick={() => setShowSlideshow(true)}
-              className="inline-flex items-center justify-center px-4 py-2.5 h-10 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all font-medium"
+              className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 font-medium overflow-hidden"
             >
               <Play className="w-4 h-4 mr-2" />
-              Show
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                Show
+              </span>
             </button>
             {(selectedPageIds.size > 0 || pages.some(page => !page.generated_html)) && (
               <button
                 onClick={handleGenerateAllHtml}
                 disabled={generatingHtml.size > 0}
-                className="inline-flex items-center justify-center px-4 py-2.5 h-10 text-white bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl hover:from-purple-600 hover:to-pink-700 disabled:opacity-50 transition-all font-medium"
+                className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-white bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl hover:from-purple-600 hover:to-pink-700 disabled:opacity-50 transition-all duration-300 font-medium overflow-hidden"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
-                {generatingHtml.size > 0 
-                  ? `Generating ${generatingHtml.size}...` 
-                  : selectedPageIds.size > 0 
-                    ? `Generate Selected (${selectedPageIds.size})`
-                    : 'Generate All'
-                }
+                <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                  {generatingHtml.size > 0 
+                    ? `Generating ${generatingHtml.size}...` 
+                    : selectedPageIds.size > 0 
+                      ? `Generate Selected (${selectedPageIds.size})`
+                      : 'Generate All'
+                  }
+                </span>
               </button>
             )}
             <button
               onClick={() => setShowPageForm(true)}
-              className="inline-flex items-center justify-center px-4 py-2.5 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all font-medium"
+              className="group inline-flex items-center justify-center px-3 py-2.5 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 font-medium overflow-hidden"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add Page
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                Add Page
+              </span>
             </button>
           </div>
         </div>
@@ -298,15 +309,19 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                   <>
                     <button
                       onClick={handleCancelOrder}
-                      className="text-xs text-gray-600 hover:text-gray-800 transition-colors px-3 py-1.5 border border-gray-300 rounded-lg font-medium"
+                      className="group text-xs text-gray-600 hover:text-gray-800 transition-all duration-300 px-2 py-1.5 border border-gray-300 rounded-lg font-medium overflow-hidden inline-flex items-center"
                     >
-                      Cancel
+                      <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                        Cancel
+                      </span>
                     </button>
                     <button
                       onClick={handleSaveOrder}
-                      className="text-xs text-blue-600 hover:text-blue-800 transition-colors px-3 py-1.5 bg-blue-100 rounded-lg font-medium"
+                      className="group text-xs text-blue-600 hover:text-blue-800 transition-all duration-300 px-2 py-1.5 bg-blue-100 rounded-lg font-medium overflow-hidden inline-flex items-center"
                     >
-                      Save Order
+                      <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                        Save Order
+                      </span>
                     </button>
                   </>
                 ) : (
@@ -314,17 +329,21 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                     {pages.length > 1 && (
                       <button
                         onClick={handleStartEditOrder}
-                        className="text-xs text-gray-600 hover:text-gray-800 transition-colors px-3 py-1.5 bg-gray-100 rounded-lg font-medium"
+                        className="group text-xs text-gray-600 hover:text-gray-800 transition-all duration-300 px-2 py-1.5 bg-gray-100 rounded-lg font-medium overflow-hidden inline-flex items-center"
                       >
-                        Edit Order
+                        <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                          Edit Order
+                        </span>
                       </button>
                     )}
                     {pages.length > 0 && (
                       <button
                         onClick={handleSelectAll}
-                        className="text-xs text-indigo-600 hover:text-indigo-800 transition-colors px-3 py-1.5 bg-indigo-50 rounded-lg font-medium"
+                        className="group text-xs text-indigo-600 hover:text-indigo-800 transition-all duration-300 px-2 py-1.5 bg-indigo-50 rounded-lg font-medium overflow-hidden inline-flex items-center"
                       >
-                        {selectedPageIds.size === pages.length ? 'Deselect All' : 'Select All'}
+                        <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                          {selectedPageIds.size === pages.length ? 'Deselect All' : 'Select All'}
+                        </span>
                       </button>
                     )}
                   </>
@@ -500,9 +519,12 @@ function SortablePageItem({
             {!isEditingOrder && (
                 <button
                   onClick={onDelete}
-                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
+                  className="group/btn p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-300 flex-shrink-0 inline-flex items-center overflow-hidden"
                 >
                   <Trash2 className="w-3 h-3" />
+                  <span className="max-w-0 group-hover/btn:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover/btn:ml-1 text-xs">
+                    Delete
+                  </span>
                 </button>
             )}
           </div>
@@ -612,16 +634,22 @@ function PageEditor({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all disabled:opacity-50"
+              className="group p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-300 disabled:opacity-50 inline-flex items-center overflow-hidden"
             >
               <Save className="w-5 h-5" />
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+                Save
+              </span>
             </button>
             <button
               onClick={onGenerateHtml}
               disabled={isGenerating}
-              className="p-3 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all disabled:opacity-50 shadow-sm"
+              className="group p-3 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all duration-300 disabled:opacity-50 shadow-sm inline-flex items-center overflow-hidden"
             >
               <Sparkles className="w-5 h-5" />
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+                Generate
+              </span>
             </button>
           </div>
         </div>
@@ -673,9 +701,12 @@ function PageEditor({
                   <button
                     onClick={onGenerateHtml}
                     disabled={isGenerating}
-                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
+                    className="group px-3 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium inline-flex items-center overflow-hidden"
                   >
-                    {isGenerating ? 'Generating...' : 'Generate HTML'}
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                      {isGenerating ? 'Generating...' : 'Generate HTML'}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -767,16 +798,21 @@ function PageFormModal({
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all font-medium"
+              className="group px-3 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300 font-medium inline-flex items-center overflow-hidden"
             >
-              Cancel
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                Cancel
+              </span>
             </button>
             <button
               type="submit"
               disabled={saving || !formData.title.trim()}
-              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
+              className="group px-3 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium inline-flex items-center overflow-hidden"
             >
-              {saving ? 'Creating...' : 'Create Page'}
+              <Plus className="w-5 h-5 mr-2" />
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                {saving ? 'Creating...' : 'Create Page'}
+              </span>
             </button>
           </div>
         </form>
