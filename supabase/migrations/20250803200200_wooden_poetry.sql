@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS infographic_pages_history (
   infographic_page_id uuid NOT NULL REFERENCES infographic_pages(id) ON DELETE CASCADE,
   generated_html text NOT NULL DEFAULT '',
   user_comment text NOT NULL DEFAULT '',
-  user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at timestamptz DEFAULT now()
 );
 
