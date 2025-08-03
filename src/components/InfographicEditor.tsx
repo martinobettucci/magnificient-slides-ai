@@ -622,9 +622,9 @@ function PageEditor({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden min-h-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         {activeTab === 'edit' ? (
-          <div className="flex-1 flex flex-col p-6 bg-gradient-to-br from-gray-50 to-white overflow-hidden">
+          <div className="flex-1 flex flex-col p-6 bg-gradient-to-br from-gray-50 to-white overflow-hidden min-h-0">
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-3">
                 Page Title
@@ -636,14 +636,14 @@ function PageEditor({
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white shadow-sm"
               />
             </div>
-            <div className="flex-1 flex flex-col mt-6 min-h-0">
+            <div className="flex-1 flex flex-col mt-6 min-h-0 overflow-hidden">
               <label className="block text-sm font-semibold text-gray-800 mb-3">
                 Content (Markdown)
               </label>
               <textarea
                 value={formData.content_markdown}
                 onChange={(e) => setFormData(prev => ({ ...prev, content_markdown: e.target.value }))}
-                className="flex-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm transition-all bg-white shadow-sm resize-none min-h-0"
+                className="flex-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm transition-all bg-white shadow-sm resize-none min-h-0 h-full"
                 placeholder="Enter your content in Markdown format..."
               />
             </div>
