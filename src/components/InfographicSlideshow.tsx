@@ -17,22 +17,6 @@ export function InfographicSlideshow({ infographic, onClose }: InfographicSlides
     loadPages();
   }, [infographic.id]);
 
-  // Keyboard navigation
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'ArrowLeft') {
-      goToPreviousPage();
-    } else if (e.key === 'ArrowRight') {
-      goToNextPage();
-    } else if (e.key === 'Escape') {
-      onClose();
-    }
-  }, []);
-
-  useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
-
   const loadPages = async () => {
     try {
       setLoading(true);
@@ -68,6 +52,22 @@ export function InfographicSlideshow({ infographic, onClose }: InfographicSlides
       setCurrentPageIndex(index);
     }
   };
+
+  // Keyboard navigation
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'ArrowLeft') {
+      goToPreviousPage();
+    } else if (e.key === 'ArrowRight') {
+      goToNextPage();
+    } else if (e.key === 'Escape') {
+      onClose();
+    }
+  }, [currentPageIndex, pages.length, onClose]);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   if (loading) {
     return (
