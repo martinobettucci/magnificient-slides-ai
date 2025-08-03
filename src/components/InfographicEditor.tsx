@@ -588,7 +588,11 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               page={selectedPage}
               infographic={infographic}
               onUpdate={loadPages}
-              onGenerateHtml={() => handleGenerateHtml(selectedPage.id)}
+              onGenerateHtml={(userComment) => 
+                userComment 
+                  ? handleGenerateHtmlWithComment(selectedPage.id, userComment)
+                  : handleGenerateHtml(selectedPage.id)
+              }
               queueStatus={pageRecentStatusMap.get(selectedPage.id)}
             />
           ) : (
