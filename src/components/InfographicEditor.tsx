@@ -197,7 +197,10 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       console.log('Generating HTML for page:', pageId, 'with comment:', userComment);
       setError(null);
       
-      const result = await infographicsService.generatePageHtml(pageId, userComment);
+      // Ensure userComment is actually a string to prevent circular reference errors
+      const safeUserComment = typeof userComment === 'string' ? userComment : undefined;
+      
+      const result = await infographicsService.generatePageHtml(pageId, safeUserComment);
       console.log('HTML generation completed successfully');
       
       // Real-time subscription will handle the updates automatically,
