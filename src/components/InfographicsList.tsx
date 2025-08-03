@@ -70,7 +70,8 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <div className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-3">
@@ -162,7 +163,6 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
         </div>
       )}
       </div>
-    </div>
 
       {/* Slideshow Modal */}
       {showSlideshow && (
@@ -171,6 +171,7 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
           onClose={() => setShowSlideshow(null)}
         />
       )}
-    </div>
+      </div>
+    </>
   );
 }
