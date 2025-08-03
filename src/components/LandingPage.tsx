@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, ArrowRight, Users, Zap, Palette, Eye, Mail, Lock, User, LogIn, UserPlus } from 'lucide-react';
+import { Sparkles, ArrowRight, Users, Zap, Palette, Mail, Lock, User, LogIn, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface LandingPageProps {
@@ -226,11 +226,6 @@ export function LandingPage({ onLogin }: LandingPageProps) {
               >
                 <User className="w-6 h-6 mr-3" />
                 Get Started Free
-              </button>
-              
-              <button className="inline-flex items-center px-8 py-4 text-gray-700 bg-white/80 backdrop-blur-sm rounded-2xl hover:bg-white transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 font-semibold text-lg border border-gray-200">
-                <Eye className="w-6 h-6 mr-3" />
-                Watch Demo
               </button>
             </div>
           </div>
