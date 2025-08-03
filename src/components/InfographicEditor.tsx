@@ -21,6 +21,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { infographicsService, Infographic, InfographicPage, supabase } from '../lib/supabase';
 import { InfographicSlideshow } from './InfographicSlideshow';
+import { MarkdownImporter } from './InfographicEditor/MarkdownImporter';
 
 interface InfographicEditorProps {
   infographic: Infographic;
@@ -618,6 +619,18 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
         <InfographicSlideshow
           infographic={infographic}
           onClose={() => setShowSlideshow(false)}
+        />
+      )}
+
+      {/* Markdown Importer Modal */}
+      {showMarkdownImporter && (
+        <MarkdownImporter
+          infographicId={infographic.id}
+          onImport={() => {
+            setShowMarkdownImporter(false);
+            loadPages();
+          }}
+          onCancel={() => setShowMarkdownImporter(false)}
         />
       )}
     </div>
