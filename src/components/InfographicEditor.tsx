@@ -209,12 +209,10 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       console.log('=== handleGenerateHtml Success ===');
     } catch (err) {
       console.error('=== handleGenerateHtml Error ===');
-      console.error('Error generating HTML:', {
-        pageId,
-        error: err,
-        message: err instanceof Error ? err.message : 'Unknown error',
-        stack: err instanceof Error ? err.stack : undefined
-      });
+      console.error('Error generating HTML for pageId:', pageId);
+      console.error('Error object:', err);
+      console.error('Error message:', err instanceof Error ? err.message : 'Unknown error');
+      console.error('Error stack:', err instanceof Error ? err.stack : undefined);
       
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate HTML';
       setError(`HTML Generation Error: ${errorMessage}`);
