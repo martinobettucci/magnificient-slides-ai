@@ -161,7 +161,6 @@ export function PageEditor({
               </button>
               <button
                 onClick={() => setShowFeedbackInput(!showFeedbackInput)}
-                disabled={!!queueStatus}
                 className="group p-3 text-purple-600 bg-purple-100 hover:bg-purple-200 rounded-lg transition-all duration-300 disabled:opacity-50 shadow-sm inline-flex items-center overflow-hidden"
               >
                 <MessageSquare className="w-5 h-5" />
@@ -199,7 +198,6 @@ export function PageEditor({
               </button>
               <button
                 onClick={handleGenerateWithFeedback}
-                disabled={!!queueStatus}
                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg disabled:opacity-50 text-sm font-medium"
               >
                 Generate with Feedback
@@ -307,7 +305,6 @@ export function PageEditor({
                   {selectedHistoryId === 'current' && (
                     <button
                       onClick={() => setShowRegeneratePrompt(!showRegeneratePrompt)}
-                      disabled={!!queueStatus}
                       className="flex items-center space-x-2 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-all text-sm font-medium disabled:opacity-50"
                     >
                       <MessageSquare className="w-4 h-4" />
