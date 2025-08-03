@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, FileText, Eye, Code, Trash2, Edit3, Play, Sparkles, Save, X, Settings, CheckSquare, Square } from 'lucide-react';
+import { ArrowLeft, Plus, FileText, Eye, Code, Trash2, Edit3, Play, Sparkles, Save, X, Settings, CheckSquare, Square, Zap } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -159,6 +159,25 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
     setPages(originalPages);
     setIsEditingOrder(false);
     setOriginalPages([]);
+  };
+
+  const handleTriggerWorker = async () => {
+    try {
+      setTriggeringWorker(true);
+      setError(null);
+      
+      console.log('Triggering queue worker to process all pending items...');
+      await infographicsService.triggerQueueWorker();
+      
+      // Poll immediately to update status
+      await pollQueueStatus();
+      
+    } catch (err) {
+      console.error('Error triggering queue worker:', err);
+      setError(err instanceof Error ? err.message : 'Failed to trigger queue worker');
+    } finally {
+      setTriggeringWorker(false);
+    }
   };
 
   const handleGenerateHtml = async (pageId: string) => {
@@ -461,7 +480,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               infographic={infographic}
               onUpdate={loadPages}
               onGenerateHtml={() => handleGenerateHtml(selectedPage.id)}
-             isQueued={generatingHtml.has(selectedPage.id)}
+             queueStatus={queueStatus.get(selectedPage.id)}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500 overflow-hidden">

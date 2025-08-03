@@ -289,7 +289,7 @@ export const infographicsService = {
           'Authorization': `Bearer ${supabaseAnonKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action: 'process-once' }),
+        body: JSON.stringify({ action: 'start-worker' }),
       });
 
       console.log('Queue worker response:', {
