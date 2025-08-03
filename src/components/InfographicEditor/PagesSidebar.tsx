@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Edit3, Save, X, CheckSquare, Square, Sparkles } from 'lucide-react';
+import { FileText, Edit3, Save, X, CheckSquare, Square, Sparkles, Upload } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -24,6 +24,7 @@ interface PagesSidebarProps {
   selectedPageIds: Set<string>;
   pageRecentStatusMap: Map<string, string>;
   activeQueueCount: number;
+  onShowMarkdownImporter: () => void;
   onSelectPage: (page: InfographicPage) => void;
   onSelectPageId: (pageId: string, selected: boolean) => void;
   onSelectAll: () => void;
@@ -38,6 +39,7 @@ export function PagesSidebar({
   selectedPageIds,
   pageRecentStatusMap,
   activeQueueCount,
+  onShowMarkdownImporter,
   onSelectPage,
   onSelectPageId,
   onSelectAll,
@@ -112,7 +114,18 @@ export function PagesSidebar({
     <div className="w-80 bg-white/50 backdrop-blur-sm border-r border-gray-200 overflow-y-auto flex-shrink-0">
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900">Pages ({pages.length})</h2>
+          <div className="flex items-center space-x-3">
+            <h2 className="text-lg font-bold text-gray-900">Pages ({pages.length})</h2>
+            <button
+              onClick={onShowMarkdownImporter}
+              className="group inline-flex items-center px-3 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-300 shadow-sm hover:shadow-md text-sm font-medium overflow-hidden"
+            >
+              <Upload className="w-4 h-4" />
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+                Import MD
+              </span>
+            </button>
+          </div>
           <div className="flex items-center space-x-2">
             {isEditingOrder ? (
               <>
