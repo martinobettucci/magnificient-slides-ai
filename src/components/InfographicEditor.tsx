@@ -40,6 +40,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const [originalPages, setOriginalPages] = useState<InfographicPage[]>([]);
   const [queueStatus, setQueueStatus] = useState<Map<string, string>>(new Map());
+  const [triggeringWorker, setTriggeringWorker] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
