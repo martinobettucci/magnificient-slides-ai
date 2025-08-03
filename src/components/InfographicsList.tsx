@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText, Calendar, Edit, Trash2, Play } from 'lucide-react';
+import { Plus, FileText, Calendar, Edit, Trash2, Play, Sparkles, Layers } from 'lucide-react';
 import { infographicsService, Infographic } from '../lib/supabase';
 import { InfographicSlideshow } from './InfographicSlideshow';
 
@@ -70,79 +70,99 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">InforgrAIphics</h1>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      <div className="container mx-auto px-6 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-3">
+            <div className="p-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-lg">
+              <Sparkles className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                InforgrAIphics
+              </h1>
+              <p className="text-gray-600 text-sm">Create stunning infographics with AI</p>
+            </div>
+          </div>
         <button
           onClick={onCreateNew}
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
         >
           <Plus className="w-5 h-5 mr-2" />
           New Infographic
         </button>
-      </div>
+        </div>
 
       {infographics.length === 0 ? (
-        <div className="text-center py-12">
-          <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No infographics yet</h3>
-          <p className="text-gray-500 mb-6">Create your first infographic to get started</p>
+        <div className="text-center py-20">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-full blur-3xl opacity-30"></div>
+            <div className="relative p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+              <Layers className="w-20 h-20 text-indigo-400 mx-auto mb-6" />
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">No infographics yet</h3>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">Create your first infographic to get started with AI-powered visual storytelling</p>
           <button
             onClick={onCreateNew}
-            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
           >
             <Plus className="w-5 h-5 mr-2" />
             Create Infographic
           </button>
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {infographics.map((infographic) => (
             <div
               key={infographic.id}
               onClick={() => onSelectInfographic(infographic)}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer group"
+              className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-2xl transition-all duration-300 cursor-pointer group transform hover:-translate-y-1 hover:border-indigo-200 relative overflow-hidden"
             >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-full -translate-y-16 translate-x-16 opacity-50 group-hover:opacity-100 transition-opacity"></div>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                  <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-indigo-600 transition-colors relative z-10">
                     {infographic.name}
                   </h3>
-                  <p className="text-gray-600 text-sm line-clamp-2">
+                  <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed relative z-10">
                     {infographic.description}
                   </p>
                 </div>
                 <button
                   onClick={(e) => handleDelete(infographic.id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all"
+                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all relative z-10"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+              
+              <div className="flex items-center justify-between mb-4 relative z-10">
+                <div className="flex items-center text-sm text-gray-500">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  {new Date(infographic.updated_at).toLocaleDateString()}
+                </div>
                 <button
                   onClick={(e) => handleShowSlideshow(infographic, e)}
-                  className="p-1 text-gray-400 hover:text-green-500 transition-colors"
+                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-green-500 hover:bg-green-50 rounded-lg transition-all"
                 >
                   <Play className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="flex items-center text-sm text-gray-500">
-                <Calendar className="w-4 h-4 mr-1" />
-                {new Date(infographic.updated_at).toLocaleDateString()}
-              </div>
-
-              <div className="mt-4 flex items-center justify-between">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              <div className="flex items-center justify-between relative z-10">
+                <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700">
                   <Edit className="w-3 h-3 mr-1" />
                   Project
                 </span>
+                <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full"></div>
               </div>
             </div>
           ))}
         </div>
       )}
+      </div>
+    </div>
 
       {/* Slideshow Modal */}
       {showSlideshow && (

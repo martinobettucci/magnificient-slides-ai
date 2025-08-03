@@ -89,28 +89,36 @@ export function InfographicForm({ infographic, onSave, onCancel }: InfographicFo
     }
   };
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="flex items-center mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      <div className="container mx-auto px-6 py-8">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center mb-8">
         <button
           onClick={onCancel}
-          className="mr-4 p-2 text-gray-600 hover:text-gray-900 transition-colors"
+          className="mr-4 p-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">
-          {infographic ? 'Edit Infographic' : 'New Infographic'}
-        </h1>
-      </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                {infographic ? 'Edit Infographic' : 'New Infographic'}
+              </h1>
+              <p className="text-gray-600 mt-1">
+                {infographic ? 'Update your project settings' : 'Create a new AI-powered infographic project'}
+              </p>
+            </div>
+          </div>
 
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="mb-8 bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm">
+          <p className="text-red-800 font-medium">{error}</p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+            <form onSubmit={handleSubmit} className="space-y-8">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="name" className="block text-sm font-semibold text-gray-800 mb-3">
             Project Name *
           </label>
           <input
@@ -118,39 +126,39 @@ export function InfographicForm({ infographic, onSave, onCancel }: InfographicFo
             id="name"
             value={formData.name}
             onChange={(e) => handleChange('name', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white"
             placeholder="Enter project name"
             required
           />
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="description" className="block text-sm font-semibold text-gray-800 mb-3">
             Project Description
           </label>
           <textarea
             id="description"
             value={formData.description}
             onChange={(e) => handleChange('description', e.target.value)}
-            rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows={5}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white resize-none"
             placeholder="Describe your infographic project..."
           />
         </div>
 
         <div>
-          <label htmlFor="style_description" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="style_description" className="block text-sm font-semibold text-gray-800 mb-3">
             Style Guidelines
             <button
               type="button"
               onClick={handleGenerateStyleGuidelines}
               disabled={generatingStyle || !formData.name.trim() || !formData.description.trim()}
-              className="ml-2 inline-flex items-center px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="ml-3 inline-flex items-center px-3 py-1.5 text-xs bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 rounded-lg hover:from-purple-200 hover:to-pink-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
             >
               {generatingStyle ? (
-                <div className="animate-spin rounded-full h-3 w-3 border-b border-purple-700 mr-1"></div>
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-purple-700 mr-1.5"></div>
               ) : (
-                <Sparkles className="w-3 h-3 mr-1" />
+                <Sparkles className="w-3 h-3 mr-1.5" />
               )}
               {generatingStyle ? 'Generating...' : 'AI Suggest'}
             </button>
@@ -160,37 +168,41 @@ export function InfographicForm({ infographic, onSave, onCancel }: InfographicFo
             value={formData.style_description}
             onChange={(e) => handleChange('style_description', e.target.value)}
             disabled={generatingStyle}
-            rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows={6}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white resize-none disabled:opacity-60"
             placeholder="Describe the visual style, colors, fonts, layout preferences..."
           />
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-3 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400">
+            <strong>💡 Tip:</strong> 
             These guidelines will be used by AI to generate consistent page designs. Use the AI Suggest button to get professional recommendations.
           </p>
         </div>
 
-        <div className="flex items-center justify-end space-x-4 pt-6">
+              <div className="flex items-center justify-end space-x-4 pt-8 border-t border-gray-100">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            className="px-6 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all font-medium"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
           >
             {loading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
             ) : (
-              <Save className="w-4 h-4 mr-2" />
+              <Save className="w-5 h-5 mr-2" />
             )}
             {infographic ? 'Update' : 'Create'} Infographic
           </button>
         </div>
-      </form>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

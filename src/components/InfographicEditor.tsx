@@ -217,20 +217,22 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   }
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 to-gray-100">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-5 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <button
               onClick={onBack}
-              className="mr-4 p-2 text-gray-600 hover:text-gray-900 transition-colors"
+              className="mr-4 p-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{infographic.name}</h1>
-              <p className="text-sm text-gray-600">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                {infographic.name}
+              </h1>
+              <p className="text-sm text-gray-600 mt-1">
                 {infographic.description.length > 300 
                   ? infographic.description.substring(0, 300) + '...'
                   : infographic.description
@@ -241,14 +243,14 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
           <div className="flex items-center space-x-3">
             <button
               onClick={onEdit}
-              className="inline-flex items-center px-3 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="inline-flex items-center px-4 py-2.5 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all font-medium"
             >
               <Edit3 className="w-4 h-4 mr-2" />
               Edit Project
             </button>
             <button
               onClick={() => setShowSlideshow(true)}
-              className="inline-flex items-center px-3 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+              className="inline-flex items-center px-4 py-2.5 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
             >
               <Play className="w-4 h-4 mr-2" />
               Show
@@ -257,7 +259,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               <button
                 onClick={handleGenerateAllHtml}
                 disabled={generatingHtml.size > 0}
-                className="inline-flex items-center px-3 py-2 text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                className="inline-flex items-center px-4 py-2.5 text-white bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl hover:from-purple-600 hover:to-pink-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
                 {generatingHtml.size > 0 
@@ -270,7 +272,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
             )}
             <button
               onClick={() => setShowPageForm(true)}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Page
@@ -280,29 +282,29 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       </div>
 
       {error && (
-        <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-xl p-4 shadow-sm">
           <p className="text-red-800">{error}</p>
         </div>
       )}
 
       <div className="flex-1 flex overflow-hidden">
         {/* Pages Sidebar */}
-        <div className="w-80 bg-gray-50 border-r border-gray-200 overflow-y-auto">
-          <div className="p-4">
+        <div className="w-80 bg-white/50 backdrop-blur-sm border-r border-gray-200 overflow-y-auto">
+          <div className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Pages ({pages.length})</h2>
+              <h2 className="text-lg font-bold text-gray-900">Pages ({pages.length})</h2>
               <div className="flex items-center space-x-2">
                 {isEditingOrder ? (
                   <>
                     <button
                       onClick={handleCancelOrder}
-                      className="text-xs text-gray-600 hover:text-gray-800 transition-colors px-2 py-1 border border-gray-300 rounded"
+                      className="text-xs text-gray-600 hover:text-gray-800 transition-colors px-3 py-1.5 border border-gray-300 rounded-lg font-medium"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleSaveOrder}
-                      className="text-xs text-blue-600 hover:text-blue-800 transition-colors px-2 py-1 bg-blue-100 rounded"
+                      className="text-xs text-blue-600 hover:text-blue-800 transition-colors px-3 py-1.5 bg-blue-100 rounded-lg font-medium"
                     >
                       Save Order
                     </button>
@@ -312,7 +314,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                     {pages.length > 1 && (
                       <button
                         onClick={handleStartEditOrder}
-                        className="text-xs text-gray-600 hover:text-gray-800 transition-colors"
+                        className="text-xs text-gray-600 hover:text-gray-800 transition-colors px-3 py-1.5 bg-gray-100 rounded-lg font-medium"
                       >
                         Edit Order
                       </button>
@@ -320,7 +322,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                     {pages.length > 0 && (
                       <button
                         onClick={handleSelectAll}
-                        className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                        className="text-xs text-indigo-600 hover:text-indigo-800 transition-colors px-3 py-1.5 bg-indigo-50 rounded-lg font-medium"
                       >
                         {selectedPageIds.size === pages.length ? 'Deselect All' : 'Select All'}
                       </button>
@@ -331,20 +333,23 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
             </div>
             
             {isEditingOrder && (
-              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
+              <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm">
+                <p className="text-sm text-blue-800 font-medium">
                   <strong>Reorder Mode:</strong> Drag pages to reorder them, then click "Save Order" to confirm changes.
                 </p>
               </div>
             )}
             
             {pages.length === 0 ? (
-              <div className="text-center py-8">
-                <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500 text-sm">No pages yet</p>
+              <div className="text-center py-12">
+                <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
+                  <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 font-medium">No pages yet</p>
+                  <p className="text-gray-400 text-sm mt-1">Click "Add Page" to get started</p>
+                </div>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
@@ -459,13 +464,13 @@ function SortablePageItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`p-3 rounded-lg transition-colors border ${
+      className={`p-4 rounded-xl transition-all duration-200 border-2 ${
         isSelected && !isEditingOrder
-          ? 'bg-blue-100 border-blue-200'
-          : 'bg-white hover:bg-gray-100'
-      } ${isDragging ? 'opacity-50' : ''} ${isEditingOrder ? 'cursor-move' : 'cursor-pointer'}`}
+          ? 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 shadow-md'
+          : 'bg-white hover:bg-gray-50 border-gray-200 hover:border-gray-300 hover:shadow-lg'
+      } ${isDragging ? 'opacity-50 shadow-2xl scale-105' : ''} ${isEditingOrder ? 'cursor-move hover:shadow-xl' : 'cursor-pointer'} transform hover:-translate-y-0.5`}
     >
-      <div className="flex items-start space-x-3">
+      <div className="flex items-start space-x-4">
         {!isEditingOrder && (
           <input
             type="checkbox"
@@ -474,7 +479,7 @@ function SortablePageItem({
               e.stopPropagation();
               onCheck(e.target.checked);
             }}
-            className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded flex-shrink-0"
+            className="mt-1.5 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded flex-shrink-0"
           />
         )}
         
@@ -483,19 +488,19 @@ function SortablePageItem({
           {...(isEditingOrder ? { ...attributes, ...listeners } : {})}
           onClick={!isEditingOrder ? onSelect : undefined}
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center min-w-0 flex-1">
-              <span className="text-xs font-medium text-gray-500 mr-2 flex-shrink-0">
+              <span className="text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 px-2 py-1 rounded-full mr-3 flex-shrink-0 shadow-sm">
                 {index + 1}
               </span>
-              <h3 className="text-sm font-medium text-gray-900 truncate">
+              <h3 className="text-sm font-bold text-gray-900 truncate">
                 {page.title}
               </h3>
             </div>
             {!isEditingOrder && (
                 <button
                   onClick={onDelete}
-                  className="p-1 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -503,7 +508,7 @@ function SortablePageItem({
           </div>
           
           {page.content_markdown && (
-            <p className="text-xs text-gray-500 mb-2 line-clamp-2 leading-relaxed">
+            <p className="text-xs text-gray-600 mb-3 line-clamp-2 leading-relaxed">
               {page.content_markdown.length > 120 
                 ? page.content_markdown.substring(0, 120) + '...'
                 : page.content_markdown
@@ -512,12 +517,12 @@ function SortablePageItem({
           )}
           
           <div className="flex items-center justify-between">
-            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+            <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${
               isGenerating
-                ? 'bg-blue-100 text-blue-800'
+                ? 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800'
                 : page.generated_html 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-yellow-100 text-yellow-800'
+                  ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800' 
+                  : 'bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800'
             }`}>
               {isGenerating 
                 ? 'Generating...' 
@@ -569,15 +574,15 @@ function PageEditor({
   return (
     <div className="h-full flex flex-col">
       {/* Page Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-5 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="flex bg-gray-100 rounded-xl p-1.5 shadow-inner">
               <button
                 onClick={() => setActiveTab('edit')}
-                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
                   activeTab === 'edit'
-                    ? 'bg-white text-gray-900 shadow-sm'
+                    ? 'bg-white text-gray-900 shadow-md'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -586,9 +591,9 @@ function PageEditor({
               </button>
               <button
                 onClick={() => setActiveTab('preview')}
-                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
                   activeTab === 'preview'
-                    ? 'bg-white text-gray-900 shadow-sm'
+                    ? 'bg-white text-gray-900 shadow-md'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -601,14 +606,14 @@ function PageEditor({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+              className="px-4 py-2.5 text-sm bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 disabled:opacity-50 transition-all font-medium"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>
             <button
               onClick={onGenerateHtml}
               disabled={isGenerating}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="px-4 py-2.5 text-sm bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
             >
               {isGenerating ? 'Generating...' : 'Generate HTML'}
             </button>
@@ -619,26 +624,26 @@ function PageEditor({
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         {activeTab === 'edit' ? (
-          <div className="h-full p-6 space-y-4">
+          <div className="h-full p-6 space-y-6 bg-gradient-to-br from-gray-50 to-white">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-800 mb-3">
                 Page Title
               </label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white shadow-sm"
               />
             </div>
             <div className="flex-1 flex flex-col">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-800 mb-3">
                 Content (Markdown)
               </label>
               <textarea
                 value={formData.content_markdown}
                 onChange={(e) => setFormData(prev => ({ ...prev, content_markdown: e.target.value }))}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm transition-all bg-white shadow-sm resize-none"
                 placeholder="Enter your content in Markdown format..."
               />
             </div>
@@ -652,14 +657,17 @@ function PageEditor({
                 title={`Preview of ${page.title}`}
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                <div className="text-center">
-                  <Eye className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="mb-2">No HTML generated yet</p>
+              <div className="flex items-center justify-center h-full text-gray-500 bg-gradient-to-br from-gray-50 to-white">
+                <div className="text-center p-12 bg-white rounded-2xl shadow-xl border border-gray-100">
+                  <div className="p-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                    <Eye className="w-12 h-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">No HTML generated yet</h3>
+                  <p className="text-gray-600 mb-6">Generate HTML to see the preview of your page</p>
                   <button
                     onClick={onGenerateHtml}
                     disabled={isGenerating}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
                   >
                     {isGenerating ? 'Generating...' : 'Generate HTML'}
                   </button>
@@ -712,50 +720,55 @@ function PageFormModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Add New Page</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl border border-gray-100">
+        <div className="flex items-center mb-6">
+          <div className="p-3 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-xl mr-4">
+            <Plus className="w-6 h-6 text-indigo-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">Add New Page</h2>
+        </div>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-800 mb-3">
               Page Title *
             </label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white"
               placeholder="Enter page title"
               required
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-800 mb-3">
               Initial Content (Optional)
             </label>
             <textarea
               value={formData.content_markdown}
               onChange={(e) => setFormData(prev => ({ ...prev, content_markdown: e.target.value }))}
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              rows={5}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white resize-none"
               placeholder="Enter initial content in Markdown..."
             />
           </div>
           
-          <div className="flex items-center justify-end space-x-3 pt-4">
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-100">
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-6 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all font-medium"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving || !formData.title.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
             >
               {saving ? 'Creating...' : 'Create Page'}
             </button>
