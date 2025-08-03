@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { User } from '@supabase/supabase-js';
 import { InfographicsList } from './components/InfographicsList';
 import { InfographicForm } from './components/InfographicForm';
 import { InfographicEditor } from './components/InfographicEditor';
-import { Infographic } from './lib/supabase';
+import { LandingPage } from './components/LandingPage';
+import { Infographic, authService } from './lib/supabase';
+import { LogOut } from 'lucide-react';
 
 type AppState = 
   | { view: 'list' }
@@ -10,7 +13,34 @@ type AppState =
   | { view: 'editor'; infographic: Infographic };
 
 function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [appState, setAppState] = useState<AppState>({ view: 'list' });
+
+  useEffect(() => {
+    // Check current user
+    authService.getCurrentUser().then(user => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = authService.onAuthStateChange((user) => {
+      setUser(user);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await authService.signOut();
+      setUser(null);
+      setAppState({ view: 'list' });
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   const handleSelectInfographic = (infographic: Infographic) => {
     setAppState({ view: 'editor', infographic });
@@ -32,8 +62,45 @@ function App() {
     setAppState({ view: 'list' });
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LandingPage onLogin={() => setLoading(true)} />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
+      {/* User Header */}
+      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-3 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full flex items-center justify-center">
+              <span className="text-white font-bold text-sm">
+                {user.email?.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <span className="text-sm text-gray-600">
+              Welcome, {user.email}
+            </span>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="group inline-flex items-center p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-300 overflow-hidden"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2 text-sm">
+              Sign Out
+            </span>
+          </button>
+        </div>
+      </div>
+
       <div className="flex-1 flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 80px)' }}>
         {appState.view === 'list' && (
           <InfographicsList
