@@ -67,19 +67,6 @@ CREATE POLICY "Users can insert their own page history"
   TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
--- Add policies for system operations (needed for queue worker)
-CREATE POLICY "System can read all page history"
-  ON infographic_pages_history
-  FOR SELECT
-  TO authenticated
-  USING (true);
-
-CREATE POLICY "System can insert page history"
-  ON infographic_pages_history
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
-
 -- Add index for better performance
 CREATE INDEX IF NOT EXISTS infographic_pages_history_page_id_idx 
   ON infographic_pages_history(infographic_page_id);
