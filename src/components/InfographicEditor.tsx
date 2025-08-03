@@ -36,6 +36,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   const [showPageForm, setShowPageForm] = useState(false);
   const [generatingHtml, setGeneratingHtml] = useState<Set<string>>(new Set());
   const [showSlideshow, setShowSlideshow] = useState(false);
+  const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(new Set());
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -141,10 +142,12 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   };
 
   const handleGenerateAllHtml = async () => {
-    const pagesToGenerate = pages.filter(page => !page.generated_html);
+    const pagesToGenerate = selectedPageIds.size > 0 
+      ? pages.filter(page => selectedPageIds.has(page.id))
+      : pages.filter(page => !page.generated_html);
     
     if (pagesToGenerate.length === 0) {
-      setError('All pages already have generated HTML');
+      setError(selectedPageIds.size > 0 ? 'No pages selected for generation' : 'All pages already have generated HTML');
       return;
     }
 
@@ -160,6 +163,26 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
     } catch (err) {
       console.error('Error in batch generation:', err);
       setError('Some pages failed to generate. Check individual page status.');
+    }
+  };
+
+  const handleSelectPage = (pageId: string, selected: boolean) => {
+    setSelectedPageIds(prev => {
+      const newSet = new Set(prev);
+      if (selected) {
+        newSet.add(pageId);
+      } else {
+        newSet.delete(pageId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedPageIds.size === pages.length) {
+      setSelectedPageIds(new Set());
+    } else {
+      setSelectedPageIds(new Set(pages.map(p => p.id)));
     }
   };
 
@@ -208,14 +231,19 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               <Play className="w-4 h-4 mr-2" />
               Show
             </button>
-            {pages.some(page => !page.generated_html) && (
+            {(selectedPageIds.size > 0 || pages.some(page => !page.generated_html)) && (
               <button
                 onClick={handleGenerateAllHtml}
                 disabled={generatingHtml.size > 0}
                 className="inline-flex items-center px-3 py-2 text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
-                {generatingHtml.size > 0 ? `Generating ${generatingHtml.size}...` : 'Generate All'}
+                {generatingHtml.size > 0 
+                  ? `Generating ${generatingHtml.size}...` 
+                  : selectedPageIds.size > 0 
+                    ? `Generate Selected (${selectedPageIds.size})`
+                    : 'Generate All'
+                }
               </button>
             )}
             <button
@@ -239,7 +267,17 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
         {/* Pages Sidebar */}
         <div className="w-80 bg-gray-50 border-r border-gray-200 overflow-y-auto">
           <div className="p-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Pages ({pages.length})</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Pages ({pages.length})</h2>
+              {pages.length > 0 && (
+                <button
+                  onClick={handleSelectAll}
+                  className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  {selectedPageIds.size === pages.length ? 'Deselect All' : 'Select All'}
+                </button>
+              )}
+            </div>
             
             {pages.length === 0 ? (
               <div className="text-center py-8">
@@ -260,8 +298,10 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                         page={page}
                         index={index}
                         isSelected={selectedPage?.id === page.id}
+                       isChecked={selectedPageIds.has(page.id)}
                         isGenerating={generatingHtml.has(page.id)}
                         onSelect={() => setSelectedPage(page)}
+                       onCheck={(checked) => handleSelectPage(page.id, checked)}
                         onDelete={(e) => {
                           e.stopPropagation();
                           handleDeletePage(page.id);
@@ -324,15 +364,19 @@ function SortablePageItem({
   page,
   index,
   isSelected,
+  isChecked,
   isGenerating,
   onSelect,
+  onCheck,
   onDelete,
 }: {
   page: InfographicPage;
   index: number;
   isSelected: boolean;
+  isChecked: boolean;
   isGenerating: boolean;
   onSelect: () => void;
+  onCheck: (checked: boolean) => void;
   onDelete: (e: React.MouseEvent) => void;
 }) {
   const {
@@ -354,8 +398,6 @@ function SortablePageItem({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
-      onClick={onSelect}
       className={`p-3 rounded-lg cursor-pointer transition-colors ${
         isSelected
           ? 'bg-blue-100 border-blue-200'
@@ -363,38 +405,53 @@ function SortablePageItem({
       } border ${isDragging ? 'opacity-50' : ''}`}
     >
       <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center mb-1">
-            <span className="text-xs font-medium text-gray-500 mr-2">
-              {index + 1}
-            </span>
-            <h3 className="text-sm font-medium text-gray-900 truncate">
-              {page.title}
-            </h3>
-          </div>
-          {page.content_markdown && (
-            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-              {page.content_markdown.length > 300 
-                ? page.content_markdown.substring(0, 300) + '...'
-                : page.content_markdown
-              }
-            </p>
-          )}
-          <div className="flex items-center space-x-2">
-            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-              isGenerating
-                ? 'bg-blue-100 text-blue-800'
-                : page.generated_html 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-yellow-100 text-yellow-800'
-            }`}>
-              {isGenerating 
-                ? 'Generating...' 
-                : page.generated_html 
-                  ? 'Generated' 
-                  : 'Draft'
-              }
-            </span>
+        <div className="flex items-start space-x-2">
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={(e) => {
+              e.stopPropagation();
+              onCheck(e.target.checked);
+            }}
+            className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          />
+          <div 
+            className="flex-1 min-w-0 cursor-move"
+            {...listeners}
+            onClick={onSelect}
+          >
+            <div className="flex items-center mb-1">
+              <span className="text-xs font-medium text-gray-500 mr-2">
+                {index + 1}
+              </span>
+              <h3 className="text-sm font-medium text-gray-900 truncate">
+                {page.title}
+              </h3>
+            </div>
+            {page.content_markdown && (
+              <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                {page.content_markdown.length > 300 
+                  ? page.content_markdown.substring(0, 300) + '...'
+                  : page.content_markdown
+                }
+              </p>
+            )}
+            <div className="flex items-center space-x-2">
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                isGenerating
+                  ? 'bg-blue-100 text-blue-800'
+                  : page.generated_html 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-yellow-100 text-yellow-800'
+              }`}>
+                {isGenerating 
+                  ? 'Generating...' 
+                  : page.generated_html 
+                    ? 'Generated' 
+                    : 'Draft'
+                }
+              </span>
+            </div>
           </div>
         </div>
         <button
