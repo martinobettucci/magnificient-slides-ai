@@ -286,7 +286,11 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       const result = await infographicsService.generatePageHtml(pageId);
       console.log('HTML generation completed successfully');
       
-      // Real-time subscription will handle the updates automatically
+      // Real-time subscription will handle the updates automatically,
+      // but let's also refresh immediately for better UX
+      setTimeout(() => {
+        pollQueueStatus();
+      }, 100);
       
       console.log('=== handleGenerateHtml Success ===');
     } catch (err) {
