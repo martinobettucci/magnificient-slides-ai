@@ -585,28 +585,28 @@ function PageEditor({
       <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-5 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="flex bg-gray-100 rounded-xl p-1.5 shadow-inner">
+            <div className="flex bg-gradient-to-r from-slate-100 to-gray-100 rounded-2xl p-2 shadow-lg border border-gray-200/50">
               <button
                 onClick={() => setActiveTab('edit')}
-                className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+                className={`px-6 py-3 text-sm font-bold rounded-xl transition-all duration-300 flex items-center space-x-2 ${
                   activeTab === 'edit'
-                    ? 'bg-white text-gray-900 shadow-md'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xl transform scale-105'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/70 hover:shadow-md'
                 }`}
               >
-                <Code className="w-4 h-4 mr-1 inline" />
-                Edit
+                <Code className="w-4 h-4" />
+                <span>Edit</span>
               </button>
               <button
                 onClick={() => setActiveTab('preview')}
-                className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+                className={`px-6 py-3 text-sm font-bold rounded-xl transition-all duration-300 flex items-center space-x-2 ${
                   activeTab === 'preview'
-                    ? 'bg-white text-gray-900 shadow-md'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xl transform scale-105'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/70 hover:shadow-md'
                 }`}
               >
-                <Eye className="w-4 h-4 mr-1 inline" />
-                Preview
+                <Eye className="w-4 h-4" />
+                <span>Preview</span>
               </button>
             </div>
           </div>
@@ -614,14 +614,14 @@ function PageEditor({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2.5 text-sm bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 disabled:opacity-50 transition-all font-medium"
+              className="px-6 py-3 text-sm bg-gradient-to-r from-slate-100 to-gray-100 text-gray-700 rounded-xl hover:from-slate-200 hover:to-gray-200 disabled:opacity-50 transition-all font-bold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 border border-gray-200"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>
             <button
               onClick={onGenerateHtml}
               disabled={isGenerating}
-              className="px-4 py-2.5 text-sm bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
+              className="px-6 py-3 text-sm bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-bold"
             >
               {isGenerating ? 'Generating...' : 'Generate HTML'}
             </button>
