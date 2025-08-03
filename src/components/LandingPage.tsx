@@ -159,14 +159,12 @@ export function LandingPage({ onLogin }: LandingPageProps) {
                 ) : (
                   <UserPlus className="w-5 h-5 mr-2" />
                 )}
-                <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-                  {loading 
-                    ? 'Please wait...' 
-                    : authMode === 'login' 
-                      ? 'Sign In' 
-                      : 'Create Account'
-                  }
-                </span>
+               {loading 
+                 ? 'Please wait...' 
+                 : authMode === 'login' 
+                   ? 'Sign In' 
+                   : 'Create Account'
+               }
               </button>
             </form>
 
@@ -188,12 +186,10 @@ export function LandingPage({ onLogin }: LandingPageProps) {
 
             <button
               onClick={() => setShowAuth(false)}
-              className="group mt-6 w-full text-gray-500 hover:text-gray-700 text-sm transition-colors inline-flex items-center justify-center overflow-hidden"
+             className="mt-6 w-full text-gray-500 hover:text-gray-700 text-sm transition-colors inline-flex items-center justify-center"
             >
               <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
-              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-                Back to landing page
-              </span>
+             Back to landing page
             </button>
           </div>
         </div>
@@ -226,19 +222,15 @@ export function LandingPage({ onLogin }: LandingPageProps) {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
               <button
                 onClick={() => setShowAuth(true)}
-                className="group inline-flex items-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 font-semibold text-lg overflow-hidden"
+               className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-semibold"
               >
                 <User className="w-6 h-6 mr-3" />
-                <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-                  Get Started Free
-                </span>
+                Get Started Free
               </button>
               
-              <button className="group inline-flex items-center px-8 py-4 text-gray-700 bg-white/80 backdrop-blur-sm rounded-2xl hover:bg-white transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 font-semibold text-lg border border-gray-200 overflow-hidden">
+              <button className="inline-flex items-center px-8 py-4 text-gray-700 bg-white/80 backdrop-blur-sm rounded-2xl hover:bg-white transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 font-semibold text-lg border border-gray-200">
                 <Eye className="w-6 h-6 mr-3" />
-                <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-                  Watch Demo
-                </span>
+                Watch Demo
               </button>
             </div>
           </div>
@@ -306,12 +298,10 @@ export function LandingPage({ onLogin }: LandingPageProps) {
           
           <button
             onClick={() => setShowAuth(true)}
-            className="group inline-flex items-center px-8 py-4 bg-white text-indigo-600 rounded-2xl hover:bg-gray-50 transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 font-bold text-lg overflow-hidden"
+           className="inline-flex items-center px-8 py-4 bg-white text-indigo-600 rounded-2xl hover:bg-gray-50 transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 font-bold text-lg"
           >
             <Sparkles className="w-6 h-6 mr-3" />
-            <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-              Start Creating Now
-            </span>
+           Start Creating Now
             <ArrowRight className="w-6 h-6 ml-3" />
           </button>
         </div>
