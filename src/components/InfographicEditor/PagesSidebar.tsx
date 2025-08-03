@@ -117,19 +117,11 @@ export function PagesSidebar({
           <h2 className="text-lg font-bold text-gray-900">Pages ({pages.length})</h2>
           <button
             onClick={onShowMarkdownImporter}
-            className="px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700"
+            className="group text-xs text-gray-600 hover:text-gray-800 transition-all duration-300 px-2 py-1.5 border border-gray-300 rounded-lg font-medium overflow-hidden inline-flex items-center"
           >
             Import
           </button>
         </div>
-
-        <button
-  onClick={onShowMarkdownImporter}
-  className="px-3 py-1 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 border-4 border-yellow-400"
-  style={{ zIndex: 9999 }}
->
-  Import Button Here!
-</button>
         
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
