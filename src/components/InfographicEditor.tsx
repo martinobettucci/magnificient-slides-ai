@@ -39,7 +39,8 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(new Set());
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const [originalPages, setOriginalPages] = useState<InfographicPage[]>([]);
-  const [queueStatus, setQueueStatus] = useState<Map<string, string>>(new Map());
+  const [pageRecentStatusMap, setPageRecentStatusMap] = useState<Map<string, string>>(new Map());
+  const [activeQueueCount, setActiveQueueCount] = useState(0);
   const [triggeringWorker, setTriggeringWorker] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -90,12 +91,23 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       const pageIds = pages.map(p => p.id);
       const queueItems = await infographicsService.getGenerationQueueStatus(pageIds);
       
-      const statusMap = new Map<string, string>();
+      const recentStatusMap = new Map<string, string>();
+      let activeCount = 0;
+      
       queueItems.forEach(item => {
-        statusMap.set(item.infographic_page_id, item.status);
+        // Only set the status if we haven't seen this page yet (most recent due to ordering)
+        if (!recentStatusMap.has(item.infographic_page_id)) {
+          recentStatusMap.set(item.infographic_page_id, item.status);
+        }
+        
+        // Count active jobs (pending or processing)
+        if (item.status === 'pending' || item.status === 'processing') {
+          activeCount++;
+        }
       });
       
-      setQueueStatus(statusMap);
+      setPageRecentStatusMap(recentStatusMap);
+      setActiveQueueCount(activeCount);
       
       // If any items completed, reload pages to get updated HTML
       const completedItems = queueItems.filter(item => item.status === 'completed');
@@ -212,7 +224,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   const handleGenerateAllHtml = async () => {
     const pagesToGenerate = selectedPageIds.size > 0 
       ? pages.filter(page => selectedPageIds.has(page.id))
-      : pages.filter(page => !page.generated_html && !queueStatus.has(page.id));
+      : pages.filter(page => !page.generated_html && !pageRecentStatusMap.has(page.id));
     
     if (pagesToGenerate.length === 0) {
       setError(selectedPageIds.size > 0 ? 'No pages selected for generation' : 'All pages already have generated HTML or are queued');
@@ -311,7 +323,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                 Slideshow
               </span>
             </button>
-            {queueStatus.size > 0 && (
+            {activeQueueCount > 0 && (
               <button
                 onClick={handleTriggerWorker}
                 disabled={triggeringWorker}
@@ -323,20 +335,20 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                   <Zap className="w-4 h-4" />
                 )}
                 <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-                  {triggeringWorker ? 'Processing...' : 'Process Queue'}
+                  {triggeringWorker ? 'Processing...' : `Process Queue (${activeQueueCount})`}
                 </span>
               </button>
             )}
-            {(selectedPageIds.size > 0 || pages.some(page => !page.generated_html && !queueStatus.has(page.id))) && (
+            {(selectedPageIds.size > 0 || pages.some(page => !page.generated_html && !pageRecentStatusMap.has(page.id))) && (
               <button
                 onClick={handleGenerateAllHtml}
-                disabled={queueStatus.size > 0}
+                disabled={activeQueueCount > 0}
                 className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-white bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl hover:from-purple-600 hover:to-pink-700 disabled:opacity-50 transition-all duration-300 font-medium overflow-hidden"
               >
                 <Sparkles className="w-4 h-4" />
                 <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-                  {queueStatus.size > 0 
-                    ? `Processing ${queueStatus.size}...` 
+                  {activeQueueCount > 0 
+                    ? `Processing ${activeQueueCount}...` 
                     : selectedPageIds.size > 0 
                       ? `Generate Selected (${selectedPageIds.size})`
                       : 'Generate All'
@@ -455,7 +467,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                         index={index}
                         isSelected={selectedPage?.id === page.id}
                         isChecked={selectedPageIds.has(page.id)}
-                       queueStatus={queueStatus.get(page.id)}
+                        queueStatus={pageRecentStatusMap.get(page.id)}
                         isEditingOrder={isEditingOrder}
                         onSelect={() => !isEditingOrder && setSelectedPage(page)}
                         onCheck={(checked) => handleSelectPage(page.id, checked)}
@@ -480,7 +492,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               infographic={infographic}
               onUpdate={loadPages}
               onGenerateHtml={() => handleGenerateHtml(selectedPage.id)}
-             queueStatus={queueStatus.get(selectedPage.id)}
+              queueStatus={pageRecentStatusMap.get(selectedPage.id)}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500 overflow-hidden">
@@ -618,6 +630,10 @@ function SortablePageItem({
                 ? 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800'
                 : queueStatus === 'failed'
                 ? 'bg-gradient-to-r from-red-100 to-pink-100 text-red-800'
+                : queueStatus === 'completed'
+                ? (page.generated_html 
+                  ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800' 
+                  : 'bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800')
                 : page.generated_html 
                   ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800' 
                   : 'bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800'
@@ -628,6 +644,8 @@ function SortablePageItem({
                 ? 'Processing...'
                 : queueStatus === 'failed'
                 ? 'Failed'
+                : queueStatus === 'completed'
+                ? (page.generated_html ? 'Generated' : 'Draft')
                 : page.generated_html 
                   ? 'Generated' 
                   : 'Draft'

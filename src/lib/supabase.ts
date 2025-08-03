@@ -239,8 +239,7 @@ export const infographicsService = {
       .from('generation_queue')
       .select('*')
       .in('infographic_page_id', pageIds)
-      .in('status', ['pending', 'processing'])
-      .order('requested_at', { ascending: true });
+      .order('requested_at', { ascending: false });
     
     if (error) {
       console.error('Error fetching queue status:', error);
