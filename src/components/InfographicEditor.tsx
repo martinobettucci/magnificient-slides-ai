@@ -644,7 +644,7 @@ function PageEditor({
                 value={formData.content_markdown}
                 onChange={(e) => setFormData(prev => ({ ...prev, content_markdown: e.target.value }))}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm transition-all bg-white shadow-sm resize-none"
-                style={{ height: 'calc(100vh - 280px)' }}
+                style={{ height: 'calc(100vh - 350px)' }}
                 placeholder="Enter your content in Markdown format..."
               />
             </div>
