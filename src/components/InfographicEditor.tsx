@@ -1,5 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, FileText, Eye, Code, Trash2, Edit3, Play, Sparkles } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { infographicsService, Infographic, InfographicPage } from '../lib/supabase';
 import { InfographicSlideshow } from './InfographicSlideshow';
 
@@ -17,6 +36,12 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   const [showPageForm, setShowPageForm] = useState(false);
   const [generatingHtml, setGeneratingHtml] = useState<Set<string>>(new Set());
   const [showSlideshow, setShowSlideshow] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     loadPages();
@@ -44,6 +69,33 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to delete page');
+      }
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = pages.findIndex(page => page.id === active.id);
+      const newIndex = pages.findIndex(page => page.id === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newPages = arrayMove(pages, oldIndex, newIndex);
+        setPages(newPages);
+
+        // Update page orders in the database
+        try {
+          await Promise.all(
+            newPages.map((page, index) =>
+              infographicsService.updatePage(page.id, { page_order: index })
+            )
+          );
+        } catch (err) {
+          console.error('Failed to update page order:', err);
+          // Revert the local state if database update fails
+          await loadPages();
+        }
       }
     }
   };
@@ -196,63 +248,28 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               </div>
             ) : (
               <div className="space-y-2">
-                {pages.map((page, index) => (
-                  <div
-                    key={page.id}
-                    onClick={() => setSelectedPage(page)}
-                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                      selectedPage?.id === page.id
-                        ? 'bg-blue-100 border-blue-200'
-                        : 'bg-white hover:bg-gray-100'
-                    } border`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center mb-1">
-                          <span className="text-xs font-medium text-gray-500 mr-2">
-                            {index + 1}
-                          </span>
-                          <h3 className="text-sm font-medium text-gray-900 truncate">
-                            {page.title}
-                          </h3>
-                        </div>
-                        {page.content_markdown && (
-                          <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                            {page.content_markdown.length > 300 
-                              ? page.content_markdown.substring(0, 300) + '...'
-                              : page.content_markdown
-                            }
-                          </p>
-                        )}
-                        <div className="flex items-center space-x-2">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            generatingHtml.has(page.id)
-                              ? 'bg-blue-100 text-blue-800'
-                              : page.generated_html 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {generatingHtml.has(page.id) 
-                              ? 'Generating...' 
-                              : page.generated_html 
-                                ? 'Generated' 
-                                : 'Draft'
-                            }
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => {
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext items={pages.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                    {pages.map((page, index) => (
+                      <SortablePageItem
+                        key={page.id}
+                        page={page}
+                        index={index}
+                        isSelected={selectedPage?.id === page.id}
+                        isGenerating={generatingHtml.has(page.id)}
+                        onSelect={() => setSelectedPage(page)}
+                        onDelete={(e) => {
                           e.stopPropagation();
                           handleDeletePage(page.id);
                         }}
-                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
               </div>
             )}
           </div>
@@ -298,6 +315,95 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
           onClose={() => setShowSlideshow(false)}
         />
       )}
+    </div>
+  );
+}
+
+// Sortable Page Item Component
+function SortablePageItem({
+  page,
+  index,
+  isSelected,
+  isGenerating,
+  onSelect,
+  onDelete,
+}: {
+  page: InfographicPage;
+  index: number;
+  isSelected: boolean;
+  isGenerating: boolean;
+  onSelect: () => void;
+  onDelete: (e: React.MouseEvent) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: page.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={onSelect}
+      className={`p-3 rounded-lg cursor-pointer transition-colors ${
+        isSelected
+          ? 'bg-blue-100 border-blue-200'
+          : 'bg-white hover:bg-gray-100'
+      } border ${isDragging ? 'opacity-50' : ''}`}
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center mb-1">
+            <span className="text-xs font-medium text-gray-500 mr-2">
+              {index + 1}
+            </span>
+            <h3 className="text-sm font-medium text-gray-900 truncate">
+              {page.title}
+            </h3>
+          </div>
+          {page.content_markdown && (
+            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+              {page.content_markdown.length > 300 
+                ? page.content_markdown.substring(0, 300) + '...'
+                : page.content_markdown
+              }
+            </p>
+          )}
+          <div className="flex items-center space-x-2">
+            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+              isGenerating
+                ? 'bg-blue-100 text-blue-800'
+                : page.generated_html 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-yellow-100 text-yellow-800'
+            }`}>
+              {isGenerating 
+                ? 'Generating...' 
+                : page.generated_html 
+                  ? 'Generated' 
+                  : 'Draft'
+              }
+            </span>
+          </div>
+        </div>
+        <button
+          onClick={onDelete}
+          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      </div>
     </div>
   );
 }
