@@ -349,21 +349,12 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               </span>
             </button>
             <button
-              onClick={() => setShowPageForm(true)}
-              className="group inline-flex items-center justify-center px-3 py-2.5 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 font-medium overflow-hidden"
+              onClick={() => setShowSlideshow(true)}
+              className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 font-medium overflow-hidden"
             >
-              <Plus className="w-4 h-4" />
+              <Play className="w-4 h-4" />
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-                Add Page
-              </span>
-            </button>
-            <button
-              onClick={() => setShowMarkdownImporter(true)}
-              className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300 font-medium overflow-hidden"
-            >
-              <FileDown className="w-4 h-4" />
-              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
-                Import
+                Slideshow
               </span>
             </button>
           </div>
