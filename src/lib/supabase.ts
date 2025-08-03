@@ -454,10 +454,22 @@ export const infographicsService = {
   },
 
   // Create page history entry
-  async createPageHistory(historyEntry: Omit<InfographicPageHistory, 'id' | 'created_at'>) {
+  async createPageHistory(historyEntry: Omit<InfographicPageHistory, 'id' | 'created_at' | 'user_id'>) {
+    // Get current user for RLS policy
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('User not authenticated');
+    }
+    
+    // Add user_id to the history entry
+    const historyEntryWithUser = {
+      ...historyEntry,
+      user_id: user.id
+    };
+    
     const { data, error } = await supabase
       .from('infographic_pages_history')
-      .insert(historyEntry)
+      .insert(historyEntryWithUser)
       .select()
       .single();
     
