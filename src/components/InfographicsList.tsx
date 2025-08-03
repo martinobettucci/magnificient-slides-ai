@@ -87,10 +87,12 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
           </div>
         <button
           onClick={onCreateNew}
-          className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          className="group inline-flex items-center px-3 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 overflow-hidden"
         >
           <Plus className="w-5 h-5 mr-2" />
-          New Infographic
+          <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap group-hover:mr-0">
+            New Infographic
+          </span>
         </button>
         </div>
 
@@ -104,10 +106,12 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
               <p className="text-gray-600 mb-8 max-w-md mx-auto">Create your first infographic to get started with AI-powered visual storytelling</p>
           <button
             onClick={onCreateNew}
-            className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+            className="group inline-flex items-center px-4 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 overflow-hidden"
           >
             <Plus className="w-5 h-5 mr-2" />
-            Create Infographic
+            <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap group-hover:mr-0">
+              Create Infographic
+            </span>
           </button>
             </div>
           </div>
@@ -132,9 +136,12 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
                 </div>
                 <button
                   onClick={(e) => handleDelete(infographic.id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all relative z-10"
+                  className="opacity-0 group-hover:opacity-100 group/btn inline-flex items-center p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all relative z-10 overflow-hidden"
                 >
                   <Trash2 className="w-4 h-4" />
+                  <span className="max-w-0 group-hover/btn:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover/btn:ml-2">
+                    Delete
+                  </span>
                 </button>
               </div>
               
@@ -145,9 +152,12 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
                 </div>
                 <button
                   onClick={(e) => handleShowSlideshow(infographic, e)}
-                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-green-500 hover:bg-green-50 rounded-lg transition-all"
+                  className="opacity-0 group-hover:opacity-100 group/btn inline-flex items-center p-2 text-gray-400 hover:text-green-500 hover:bg-green-50 rounded-lg transition-all overflow-hidden"
                 >
                   <Play className="w-4 h-4" />
+                  <span className="max-w-0 group-hover/btn:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover/btn:ml-2">
+                    Show
+                  </span>
                 </button>
               </div>
 

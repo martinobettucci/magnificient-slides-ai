@@ -95,9 +95,12 @@ export function InfographicForm({ infographic, onSave, onCancel }: InfographicFo
           <div className="flex items-center mb-8">
         <button
           onClick={onCancel}
-          className="mr-4 p-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
+          className="group mr-4 inline-flex items-center p-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all duration-300 overflow-hidden"
         >
           <ArrowLeft className="w-5 h-5" />
+          <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+            Back
+          </span>
         </button>
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
@@ -153,14 +156,16 @@ export function InfographicForm({ infographic, onSave, onCancel }: InfographicFo
               type="button"
               onClick={handleGenerateStyleGuidelines}
               disabled={generatingStyle || !formData.name.trim() || !formData.description.trim()}
-              className="ml-3 inline-flex items-center px-3 py-1.5 text-xs bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 rounded-lg hover:from-purple-200 hover:to-pink-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+              className="group ml-3 inline-flex items-center px-2 py-1.5 text-xs bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 rounded-lg hover:from-purple-200 hover:to-pink-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-sm overflow-hidden"
             >
               {generatingStyle ? (
                 <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-purple-700 mr-1.5"></div>
               ) : (
                 <Sparkles className="w-3 h-3 mr-1.5" />
               )}
-              {generatingStyle ? 'Generating...' : 'AI Suggest'}
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                {generatingStyle ? 'Generating...' : 'AI Suggest'}
+              </span>
             </button>
           </label>
           <textarea
@@ -182,21 +187,25 @@ export function InfographicForm({ infographic, onSave, onCancel }: InfographicFo
           <button
             type="button"
             onClick={onCancel}
-            className="px-6 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all font-medium"
+            className="group inline-flex items-center px-3 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300 font-medium overflow-hidden"
           >
-            Cancel
+            <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+              Cancel
+            </span>
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
+            className="group inline-flex items-center px-3 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium overflow-hidden"
           >
             {loading ? (
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
             ) : (
               <Save className="w-5 h-5 mr-2" />
             )}
-            {infographic ? 'Update' : 'Create'} Infographic
+            <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+              {infographic ? 'Update' : 'Create'} Infographic
+            </span>
           </button>
         </div>
             </form>
