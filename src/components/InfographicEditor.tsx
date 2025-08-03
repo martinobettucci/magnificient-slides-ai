@@ -52,19 +52,24 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
 
   useEffect(() => {
     loadPages();
-    
-    // Initial queue status load
-    pollQueueStatus();
-    
-    // Set up real-time subscription for queue updates
-    setupRealtimeSubscription();
+  }, [infographic.id]);
+
+  // Separate effect for queue status and real-time subscription
+  useEffect(() => {
+    if (pages.length > 0) {
+      // Initial queue status load
+      pollQueueStatus();
+      
+      // Set up real-time subscription for queue updates
+      setupRealtimeSubscription();
+    }
     
     return () => {
       if (realtimeSubscription) {
         realtimeSubscription.unsubscribe();
       }
     };
-  }, [infographic.id]);
+  }, [pages.length, infographic.id]);
 
   const setupRealtimeSubscription = () => {
     // Clean up existing subscription
@@ -114,6 +119,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
     try {
       setLoading(true);
       const data = await infographicsService.getPages(infographic.id);
+      console.log('Loaded pages:', data.length);
       setPages(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load pages');
@@ -138,10 +144,12 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
 
   const pollQueueStatus = async () => {
     try {
+      console.log('Polling queue status for pages:', pages.map(p => p.id));
       if (pages.length === 0) return;
       
       const pageIds = pages.map(p => p.id);
       const queueItems = await infographicsService.getGenerationQueueStatus(pageIds);
+      console.log('Queue items found:', queueItems);
       
       const recentStatusMap = new Map<string, string>();
       let activeCount = 0;
@@ -160,6 +168,10 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       
       setPageRecentStatusMap(recentStatusMap);
       setActiveQueueCount(activeCount);
+      console.log('Updated queue status:', {
+        recentStatusMap: Object.fromEntries(recentStatusMap),
+        activeCount
+      });
       
       // If any items completed, reload pages to get updated HTML
       const completedItems = queueItems.filter(item => item.status === 'completed');
@@ -538,6 +550,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                         isChecked={selectedPageIds.has(page.id)}
                         queueStatus={pageRecentStatusMap.get(page.id)}
                         isEditingOrder={isEditingOrder}
+                        hasGeneratedHtml={!!page.generated_html}
                         onSelect={() => !isEditingOrder && setSelectedPage(page)}
                         onCheck={(checked) => handleSelectPage(page.id, checked)}
                         onDelete={(e) => {
@@ -604,6 +617,7 @@ function SortablePageItem({
   isSelected,
   isChecked,
   queueStatus,
+  hasGeneratedHtml,
   isEditingOrder,
   onSelect,
   onCheck,
@@ -614,6 +628,7 @@ function SortablePageItem({
   isSelected: boolean;
   isChecked: boolean;
   queueStatus?: string;
+  hasGeneratedHtml: boolean;
   isEditingOrder: boolean;
   onSelect: () => void;
   onCheck: (checked: boolean) => void;
@@ -692,30 +707,30 @@ function SortablePageItem({
           )}
           
           <div className="flex items-center justify-between">
+            {/* Debug info */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="text-xs text-gray-400 mb-1">
+                Queue: {queueStatus || 'none'} | HTML: {hasGeneratedHtml ? 'yes' : 'no'}
+              </div>
+            )}
             <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${
-              queueStatus === 'pending'
+              queueStatus === 'pending' || queueStatus === 'processing' || queueStatus === 'failed'
+                ? queueStatus === 'pending'
                 ? 'bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800'
-                : queueStatus === 'processing'
-                ? 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800'
-                : queueStatus === 'failed'
-                ? 'bg-gradient-to-r from-red-100 to-pink-100 text-red-800'
-                : queueStatus === 'completed'
-                ? (page.generated_html 
-                  ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800' 
-                  : 'bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800')
-                : page.generated_html 
+                  : queueStatus === 'processing'
+                  ? 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800'
+                  : 'bg-gradient-to-r from-red-100 to-pink-100 text-red-800'
+                : hasGeneratedHtml 
                   ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800' 
                   : 'bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800'
             }`}>
-              {queueStatus === 'pending'
+              {queueStatus === 'pending' || queueStatus === 'processing' || queueStatus === 'failed'
+                ? queueStatus === 'pending'
                 ? 'Queued'
-                : queueStatus === 'processing'
-                ? 'Processing...'
-                : queueStatus === 'failed'
-                ? 'Failed'
-                : queueStatus === 'completed'
-                ? (page.generated_html ? 'Generated' : 'Draft')
-                : page.generated_html 
+                  : queueStatus === 'processing'
+                  ? 'Processing...'
+                  : 'Failed'
+                : hasGeneratedHtml 
                   ? 'Generated' 
                   : 'Draft'
               }
