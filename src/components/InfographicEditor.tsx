@@ -585,10 +585,10 @@ function PageEditor({
       <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-5 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="flex bg-gradient-to-r from-slate-100 to-gray-100 rounded-xl p-1 shadow-lg border border-gray-200/50">
+            <div className="flex bg-gradient-to-r from-slate-100 to-gray-100 rounded-xl p-1 shadow-lg border border-gray-200/50 w-[220px]">
               <button
                 onClick={() => setActiveTab('edit')}
-                className={`flex-1 px-6 py-3 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 min-w-[100px] ${
+                className={`w-[110px] h-[44px] px-4 py-3 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 ${
                   activeTab === 'edit'
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-white/70 hover:shadow-sm'
@@ -599,7 +599,7 @@ function PageEditor({
               </button>
               <button
                 onClick={() => setActiveTab('preview')}
-                className={`flex-1 px-6 py-3 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 min-w-[100px] ${
+                className={`w-[110px] h-[44px] px-4 py-3 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 ${
                   activeTab === 'preview'
                     ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-white/70 hover:shadow-sm'
@@ -614,14 +614,14 @@ function PageEditor({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-6 py-3 text-sm bg-gradient-to-r from-slate-100 to-gray-100 text-gray-700 rounded-xl hover:from-slate-200 hover:to-gray-200 disabled:opacity-50 transition-all font-medium shadow-sm hover:shadow-md border border-gray-200 min-w-[80px] flex items-center justify-center"
+              className="w-[80px] h-[44px] px-4 py-3 text-sm bg-gradient-to-r from-slate-100 to-gray-100 text-gray-700 rounded-xl hover:from-slate-200 hover:to-gray-200 disabled:opacity-50 transition-all font-medium shadow-sm hover:shadow-md border border-gray-200 flex items-center justify-center"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>
             <button
               onClick={onGenerateHtml}
               disabled={isGenerating}
-              className="px-6 py-3 text-sm bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-sm hover:shadow-md font-medium min-w-[140px] flex items-center justify-center"
+              className="w-[140px] h-[44px] px-4 py-3 text-sm bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all shadow-sm hover:shadow-md font-medium flex items-center justify-center"
             >
               {isGenerating ? 'Generating...' : 'Generate HTML'}
             </button>
