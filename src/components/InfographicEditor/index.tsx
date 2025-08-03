@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Play, Settings, Zap, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, Play, Settings, Zap, Upload, FileDown } from 'lucide-react';
 import { infographicsService, Infographic, InfographicPage, supabase } from '../../lib/supabase';
 import { InfographicSlideshow } from '../InfographicSlideshow';
 import { PagesSidebar } from './PagesSidebar';
@@ -346,6 +346,15 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               <Plus className="w-4 h-4" />
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
                 Add Page
+              </span>
+            </button>
+            <button
+              onClick={() => setShowMarkdownImporter(true)}
+              className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300 font-medium overflow-hidden"
+            >
+              <FileDown className="w-4 h-4" />
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                Import
               </span>
             </button>
           </div>
