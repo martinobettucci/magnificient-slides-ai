@@ -89,7 +89,7 @@ export function InfographicForm({ infographic, onSave, onCancel }: InfographicFo
     }
   };
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="h-full bg-gradient-to-br from-indigo-50 via-white to-purple-50 overflow-y-auto">
       <div className="container mx-auto px-6 py-8">
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center mb-8">

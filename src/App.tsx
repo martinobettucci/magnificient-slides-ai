@@ -33,8 +33,8 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="flex-1">
+    <div className="h-screen flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-hidden">
         {appState.view === 'list' && (
           <InfographicsList
             onSelectInfographic={handleSelectInfographic}
@@ -60,7 +60,7 @@ function App() {
       </div>
       
       {/* App Footer */}
-      <footer className="bg-gradient-to-r from-slate-900 via-gray-900 to-slate-900 text-white py-6 border-t border-gray-800">
+      <footer className="bg-gradient-to-r from-slate-900 via-gray-900 to-slate-900 text-white py-4 border-t border-gray-800 flex-shrink-0">
         <div className="container mx-auto px-6">
           <div className="flex items-center justify-center space-x-2 text-sm">
             <span className="text-gray-300">Made by</span>
