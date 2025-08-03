@@ -257,5 +257,3 @@ export function PagesSidebar({
     </div>
   );
 }
-
-export { PagesSidebar }
