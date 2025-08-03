@@ -7,7 +7,7 @@ interface PageEditorProps {
   infographic: Infographic;
   queueStatus?: string;
   onUpdate: () => void;
-  onGenerateHtml: () => void;
+  onGenerateHtml: (userComment?: string) => void;
 }
 
 export function PageEditor({ 
@@ -313,7 +313,7 @@ export function PageEditor({
                   <h3 className="text-xl font-bold text-gray-900 mb-3">No HTML generated yet</h3>
                   <p className="text-gray-600 mb-6">Generate HTML to see the preview of your page</p>
                   <button
-                    onClick={onGenerateHtml}
+                    onClick={() => onGenerateHtml()}
                     disabled={!!queueStatus}
                     className="group px-3 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium inline-flex items-center overflow-hidden"
                   >
