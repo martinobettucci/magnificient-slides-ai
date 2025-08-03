@@ -122,6 +122,12 @@ export function PagesSidebar({
             Import
           </button>
         </div>
+
+        <button
+            onClick={onShowMarkdownImporter}
+          >
+            Import
+          </button>
         
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
