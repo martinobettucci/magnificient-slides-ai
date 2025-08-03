@@ -104,8 +104,12 @@ export function PageEditor({
         last_generation_comment: `Restored from ${new Date(historyItem.created_at).toLocaleDateString()}: ${historyItem.user_comment}`
       });
       
-      // Refresh the page and history
+      // Refresh all data
       onUpdate();
+      
+      // Reload the page history
+      const updatedHistory = await infographicsService.getPageHistory(page.id);
+      setPageHistory(updatedHistory);
       
       // Reset selection to current and close modal
       setSelectedHistoryId('current');
