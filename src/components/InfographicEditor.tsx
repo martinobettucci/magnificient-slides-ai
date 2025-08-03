@@ -559,6 +559,14 @@ function PageEditor({
   });
   const [saving, setSaving] = useState(false);
 
+  // Update form data when page changes
+  useEffect(() => {
+    setFormData({
+      title: page.title,
+      content_markdown: page.content_markdown,
+    });
+  }, [page.id, page.title, page.content_markdown]);
+
   const handleSave = async () => {
     try {
       setSaving(true);
