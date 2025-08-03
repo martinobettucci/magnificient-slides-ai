@@ -37,6 +37,8 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   const [generatingHtml, setGeneratingHtml] = useState<Set<string>>(new Set());
   const [showSlideshow, setShowSlideshow] = useState(false);
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(new Set());
+  const [isEditingOrder, setIsEditingOrder] = useState(false);
+  const [originalPages, setOriginalPages] = useState<InfographicPage[]>([]);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -75,6 +77,8 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
+    if (!isEditingOrder) return;
+    
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
@@ -84,21 +88,39 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       if (oldIndex !== -1 && newIndex !== -1) {
         const newPages = arrayMove(pages, oldIndex, newIndex);
         setPages(newPages);
-
-        // Update page orders in the database
-        try {
-          await Promise.all(
-            newPages.map((page, index) =>
-              infographicsService.updatePage(page.id, { page_order: index })
-            )
-          );
-        } catch (err) {
-          console.error('Failed to update page order:', err);
-          // Revert the local state if database update fails
-          await loadPages();
-        }
       }
     }
+  };
+
+  const handleStartEditOrder = () => {
+    setOriginalPages([...pages]);
+    setIsEditingOrder(true);
+  };
+
+  const handleSaveOrder = async () => {
+    try {
+      // Update page orders in the database
+      await Promise.all(
+        pages.map((page, index) =>
+          infographicsService.updatePage(page.id, { page_order: index })
+        )
+      );
+      setIsEditingOrder(false);
+      setOriginalPages([]);
+    } catch (err) {
+      console.error('Failed to update page order:', err);
+      setError('Failed to save page order');
+      // Revert to original order
+      setPages(originalPages);
+      setIsEditingOrder(false);
+      setOriginalPages([]);
+    }
+  };
+
+  const handleCancelOrder = () => {
+    setPages(originalPages);
+    setIsEditingOrder(false);
+    setOriginalPages([]);
   };
 
   const handleGenerateHtml = async (pageId: string) => {
@@ -269,14 +291,247 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
           <div className="p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Pages ({pages.length})</h2>
-              {pages.length > 0 && (
-                <button
-                  onClick={handleSelectAll}
-                  className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+              <div className="flex items-center space-x-2">
+                {isEditingOrder ? (
+                  <>
+                    <button
+                      onClick={handleCancelOrder}
+                      className="text-xs text-gray-600 hover:text-gray-800 transition-colors px-2 py-1 border border-gray-300 rounded"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveOrder}
+                      className="text-xs text-blue-600 hover:text-blue-800 transition-colors px-2 py-1 bg-blue-100 rounded"
+                    >
+                      Save Order
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {pages.length > 1 && (
+                      <button
+                        onClick={handleStartEditOrder}
+                        className="text-xs text-gray-600 hover:text-gray-800 transition-colors"
+                      >
+                        Edit Order
+                      </button>
+                    )}
+                    {pages.length > 0 && (
+                      <button
+                        onClick={handleSelectAll}
+                        className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                      >
+                        {selectedPageIds.size === pages.length ? 'Deselect All' : 'Select All'}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+            
+            {isEditingOrder && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Reorder Mode:</strong> Drag pages to reorder them, then click "Save Order" to confirm changes.
+                </p>
+              </div>
+            )}
+            
+            {pages.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm">No pages yet</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
                 >
-                  {selectedPageIds.size === pages.length ? 'Deselect All' : 'Select All'}
+                  <SortableContext items={pages.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                    {pages.map((page, index) => (
+                      <SortablePageItem
+                        key={page.id}
+                        page={page}
+                        index={index}
+                        isSelected={selectedPage?.id === page.id}
+                        isChecked={selectedPageIds.has(page.id)}
+                        isGenerating={generatingHtml.has(page.id)}
+                        isEditingOrder={isEditingOrder}
+                        onSelect={() => !isEditingOrder && setSelectedPage(page)}
+                        onCheck={(checked) => handleSelectPage(page.id, checked)}
+                        onDelete={(e) => {
+                          e.stopPropagation();
+                          handleDeletePage(page.id);
+                        }}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 overflow-hidden">
+          {selectedPage ? (
+            <PageEditor
+              page={selectedPage}
+              infographic={infographic}
+              onUpdate={loadPages}
+              onGenerateHtml={() => handleGenerateHtml(selectedPage.id)}
+              isGenerating={generatingHtml.has(selectedPage.id)}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="text-center">
+                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p>Select a page to edit or create a new one</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Page Form Modal */}
+      {showPageForm && (
+        <PageFormModal
+          infographicId={infographic.id}
+          onSave={() => {
+            setShowPageForm(false);
+            loadPages();
+          }}
+          onCancel={() => setShowPageForm(false)}
+        />
+      )}
+
+      {/* Slideshow Modal */}
+      {showSlideshow && (
+        <InfographicSlideshow
+          infographic={infographic}
+          onClose={() => setShowSlideshow(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Sortable Page Item Component
+function SortablePageItem({
+  page,
+  index,
+  isSelected,
+  isChecked,
+  isGenerating,
+  isEditingOrder,
+  onSelect,
+  onCheck,
+  onDelete,
+}: {
+  page: InfographicPage;
+  index: number;
+  isSelected: boolean;
+  isChecked: boolean;
+  isGenerating: boolean;
+  isEditingOrder: boolean;
+  onSelect: () => void;
+  onCheck: (checked: boolean) => void;
+  onDelete: (e: React.MouseEvent) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: page.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`p-3 rounded-lg transition-colors border ${
+        isSelected && !isEditingOrder
+          ? 'bg-blue-100 border-blue-200'
+          : 'bg-white hover:bg-gray-100'
+      } ${isDragging ? 'opacity-50' : ''} ${isEditingOrder ? 'cursor-move' : 'cursor-pointer'}`}
+    >
+      <div className="flex items-start space-x-3">
+        {!isEditingOrder && (
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={(e) => {
+              e.stopPropagation();
+              onCheck(e.target.checked);
+            }}
+            className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded flex-shrink-0"
+          />
+        )}
+        
+        <div 
+          className="flex-1 min-w-0"
+          {...(isEditingOrder ? { ...attributes, ...listeners } : {})}
+          onClick={!isEditingOrder ? onSelect : undefined}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center min-w-0 flex-1">
+              <span className="text-xs font-medium text-gray-500 mr-2 flex-shrink-0">
+                {index + 1}
+              </span>
+              <h3 className="text-sm font-medium text-gray-900 truncate">
+                {page.title}
+              </h3>
+            </div>
+            {!isEditingOrder && (
+                <button
+                  onClick={onDelete}
+                  className="p-1 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+                >
+                  <Trash2 className="w-3 h-3" />
                 </button>
-              )}
+            )}
+          </div>
+          
+          {page.content_markdown && (
+            <p className="text-xs text-gray-500 mb-2 line-clamp-2 leading-relaxed">
+              {page.content_markdown.length > 120 
+                ? page.content_markdown.substring(0, 120) + '...'
+                : page.content_markdown
+              }
+            </p>
+          )}
+          
+          <div className="flex items-center justify-between">
+            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+              isGenerating
+                ? 'bg-blue-100 text-blue-800'
+                : page.generated_html 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-yellow-100 text-yellow-800'
+            }`}>
+              {isGenerating 
+                ? 'Generating...' 
+                : page.generated_html 
+                  ? 'Generated' 
+                  : 'Draft'
+              }
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
             </div>
             
             {pages.length === 0 ? (
