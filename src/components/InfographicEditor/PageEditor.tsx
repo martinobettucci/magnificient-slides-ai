@@ -143,15 +143,6 @@ export function PageEditor({
           </div>
           <div className="flex items-center space-x-3">
             <button
-              onClick={handleSave}
-              disabled={saving}
-              className="group p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-300 disabled:opacity-50 inline-flex items-center overflow-hidden"
-            >
-              <Save className="w-5 h-5" />
-              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
-                {saving ? 'Saving...' : 'Save'}
-              </span>
-            </button>
               <button
                 onClick={() => onGenerateHtml()}
                 disabled={hasActiveQueueJob}
