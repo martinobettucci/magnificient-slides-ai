@@ -275,6 +275,56 @@ export const infographicsService = {
     return data;
   },
 
+  // Manually trigger the queue worker
+  async triggerQueueWorker() {
+    console.log('=== triggerQueueWorker Start ===');
+    
+    try {
+      const apiUrl = `${supabaseUrl}/functions/v1/queue-worker`;
+      console.log('Triggering queue worker at:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'process-once' }),
+      });
+
+      console.log('Queue worker response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Queue worker error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText
+        });
+        
+        throw new Error(`Failed to trigger queue worker (${response.status}): ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('Queue worker triggered successfully:', result);
+      console.log('=== triggerQueueWorker Success ===');
+      
+      return result;
+    } catch (error) {
+      console.error('=== triggerQueueWorker Error ===');
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      throw error;
+    }
+  },
+
   // Generate style guidelines using the edge function
   async generateStyleGuidelines(projectName: string, projectDescription: string, existingStyleDescription?: string) {
     console.log('=== generateStyleGuidelines Start ===');

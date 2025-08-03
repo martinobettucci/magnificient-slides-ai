@@ -291,6 +291,22 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                 Slideshow
               </span>
             </button>
+            {queueStatus.size > 0 && (
+              <button
+                onClick={handleTriggerWorker}
+                disabled={triggeringWorker}
+                className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-white bg-gradient-to-r from-orange-500 to-red-600 rounded-xl hover:from-orange-600 hover:to-red-700 disabled:opacity-50 transition-all duration-300 font-medium overflow-hidden"
+              >
+                {triggeringWorker ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <Zap className="w-4 h-4" />
+                )}
+                <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                  {triggeringWorker ? 'Processing...' : 'Process Queue'}
+                </span>
+              </button>
+            )}
             {(selectedPageIds.size > 0 || pages.some(page => !page.generated_html && !queueStatus.has(page.id))) && (
               <button
                 onClick={handleGenerateAllHtml}
