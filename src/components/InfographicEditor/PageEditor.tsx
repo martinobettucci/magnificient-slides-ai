@@ -148,8 +148,6 @@ export function PageEditor({
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
                 {saving ? 'Saving...' : 'Save'}
               </span>
-            </button>
-            <div className="flex items-center space-x-2">
               <button
                 onClick={() => onGenerateHtml()}
                 disabled={!!queueStatus}
@@ -176,7 +174,7 @@ export function PageEditor({
         
         {/* Feedback Input */}
         {showFeedbackInput && (
-          <div className="bg-purple-50 border-b border-purple-200 p-4">
+          <div className="mt-4 bg-purple-50 border border-purple-200 rounded-xl p-4">
             <div className="mb-3">
               <label className="block text-sm font-semibold text-purple-800 mb-2">
                 What specific changes or improvements would you like?
@@ -387,7 +385,7 @@ export function PageEditor({
             )}
           </div>
         )}
-      </div>
+                <div className="mx-4 mb-4 bg-purple-50 border border-purple-200 rounded-xl p-4">
     </div>
   );
 }
