@@ -636,15 +636,14 @@ function PageEditor({
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white shadow-sm"
               />
             </div>
-            <div className="flex-1 flex flex-col min-h-0 mt-6">
+            <div className="flex-1 flex flex-col mt-6 min-h-0">
               <label className="block text-sm font-semibold text-gray-800 mb-3">
                 Content (Markdown)
               </label>
               <textarea
                 value={formData.content_markdown}
                 onChange={(e) => setFormData(prev => ({ ...prev, content_markdown: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm transition-all bg-white shadow-sm resize-none"
-                style={{ height: 'calc(100vh - 350px)' }}
+                className="flex-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm transition-all bg-white shadow-sm resize-none min-h-0"
                 placeholder="Enter your content in Markdown format..."
               />
             </div>
