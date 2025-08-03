@@ -243,14 +243,14 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
           <div className="flex items-center space-x-3">
             <button
               onClick={onEdit}
-              className="inline-flex items-center px-4 py-2.5 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all font-medium"
+              className="inline-flex items-center justify-center px-4 py-2.5 h-10 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all font-medium"
             >
               <Edit3 className="w-4 h-4 mr-2" />
               Edit Project
             </button>
             <button
               onClick={() => setShowSlideshow(true)}
-              className="inline-flex items-center px-4 py-2.5 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
+              className="inline-flex items-center justify-center px-4 py-2.5 h-10 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all font-medium"
             >
               <Play className="w-4 h-4 mr-2" />
               Show
@@ -259,7 +259,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               <button
                 onClick={handleGenerateAllHtml}
                 disabled={generatingHtml.size > 0}
-                className="inline-flex items-center px-4 py-2.5 text-white bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl hover:from-purple-600 hover:to-pink-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
+                className="inline-flex items-center justify-center px-4 py-2.5 h-10 text-white bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl hover:from-purple-600 hover:to-pink-700 disabled:opacity-50 transition-all font-medium"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
                 {generatingHtml.size > 0 
@@ -272,7 +272,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
             )}
             <button
               onClick={() => setShowPageForm(true)}
-              className="inline-flex items-center px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
+              className="inline-flex items-center justify-center px-4 py-2.5 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all font-medium"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Page
