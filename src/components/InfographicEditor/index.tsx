@@ -281,30 +281,30 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
     <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 to-gray-100">
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
+        <div className="flex items-center justify-between min-w-0">
+          <div className="flex items-center min-w-0 flex-1 mr-6">
             <button
               onClick={onBack}
-              className="group mr-4 inline-flex items-center p-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all duration-300 overflow-hidden"
+              className="group mr-4 inline-flex items-center p-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all duration-300 overflow-hidden flex-shrink-0"
             >
               <ArrowLeft className="w-5 h-5" />
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
                 Back
               </span>
             </button>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent truncate">
                 {infographic.name}
               </h1>
-              <p className="text-sm text-gray-600 mt-1">
-                {infographic.description.length > 300 
-                  ? infographic.description.substring(0, 300) + '...'
+              <p className="text-sm text-gray-600 mt-1 truncate">
+                {infographic.description.length > 150 
+                  ? infographic.description.substring(0, 150) + '...'
                   : infographic.description
                 }
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 flex-shrink-0">
             <button
               onClick={onEdit}
               className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300 font-medium overflow-hidden"
