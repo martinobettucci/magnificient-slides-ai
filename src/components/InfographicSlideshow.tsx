@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, X, ChevronLeft, ChevronRight, Home } from 'lucide-react';
 import { infographicsService, Infographic, InfographicPage } from '../lib/supabase';
 
 interface InfographicSlideshowProps {
@@ -88,9 +88,12 @@ export function InfographicSlideshow({ infographic, onClose }: InfographicSlides
           <p className="text-gray-600 mb-6">{error}</p>
           <button
             onClick={onClose}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="group w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 inline-flex items-center justify-center overflow-hidden"
           >
-            Close
+            <Home className="w-5 h-5" />
+            <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+              Back to Editor
+            </span>
           </button>
         </div>
       </div>
@@ -130,9 +133,12 @@ export function InfographicSlideshow({ infographic, onClose }: InfographicSlides
         </div>
         <button
           onClick={onClose}
-          className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
+          className="group p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-all duration-300 inline-flex items-center overflow-hidden"
         >
           <X className="w-6 h-6" />
+          <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+            Close
+          </span>
         </button>
       </div>
 
@@ -142,9 +148,12 @@ export function InfographicSlideshow({ infographic, onClose }: InfographicSlides
         <button
           onClick={goToPreviousPage}
           disabled={currentPageIndex === 0}
-          className="absolute left-4 z-10 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          className="group absolute left-4 z-10 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-all inline-flex items-center overflow-hidden"
         >
           <ChevronLeft className="w-6 h-6" />
+          <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+            Previous
+          </span>
         </button>
 
         {/* Page Content */}
@@ -161,9 +170,12 @@ export function InfographicSlideshow({ infographic, onClose }: InfographicSlides
         <button
           onClick={goToNextPage}
           disabled={currentPageIndex === pages.length - 1}
-          className="absolute right-4 z-10 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          className="group absolute right-4 z-10 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 disabled:opacity-30 disabled:cursor-not-allowed transition-all inline-flex items-center overflow-hidden"
         >
           <ChevronRight className="w-6 h-6" />
+          <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+            Next
+          </span>
         </button>
       </div>
 
