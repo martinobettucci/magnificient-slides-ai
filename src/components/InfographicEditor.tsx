@@ -217,7 +217,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 to-gray-100">
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 to-gray-100">
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-5 shadow-sm">
         <div className="flex items-center justify-between">
@@ -289,7 +289,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
 
       <div className="flex-1 flex overflow-hidden">
         {/* Pages Sidebar */}
-        <div className="w-80 bg-white/50 backdrop-blur-sm border-r border-gray-200 overflow-y-auto">
+        <div className="w-80 bg-white/50 backdrop-blur-sm border-r border-gray-200 overflow-y-auto flex-shrink-0">
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-gray-900">Pages ({pages.length})</h2>
