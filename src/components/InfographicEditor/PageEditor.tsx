@@ -28,6 +28,8 @@ export function PageEditor({
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
   const [regenerateComment, setRegenerateComment] = useState('');
   const [showRegeneratePrompt, setShowRegeneratePrompt] = useState(false);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [restoreVersionId, setRestoreVersionId] = useState<string>('');
 
   // Check if current page has active queue jobs
   const hasActiveQueueJob = queueStatus === 'pending' || queueStatus === 'processing';
@@ -83,37 +85,35 @@ export function PageEditor({
   };
 
   const handleRestoreVersion = async () => {
-    if (selectedHistoryId === 'current') return;
-    
-    const historyItem = pageHistory.find(h => h.id === selectedHistoryId);
+    const historyItem = pageHistory.find(h => h.id === restoreVersionId);
     if (!historyItem) return;
     
-    if (confirm('Are you sure you want to restore this version as the current version? This will replace the current HTML.')) {
-      try {
-        // Save current version to history before restoring
-        if (page.generated_html) {
-          await infographicsService.createPageHistory({
-            infographic_page_id: page.id,
-            generated_html: page.generated_html,
-            user_comment: page.last_generation_comment || 'Version before restore',
-          });
-        }
-        
-        // Update page with restored HTML
-        await infographicsService.updatePage(page.id, {
-          generated_html: historyItem.generated_html,
-          last_generation_comment: `Restored from ${new Date(historyItem.created_at).toLocaleDateString()}: ${historyItem.user_comment}`
+    try {
+      // Save current version to history before restoring
+      if (page.generated_html) {
+        await infographicsService.createPageHistory({
+          infographic_page_id: page.id,
+          generated_html: page.generated_html,
+          user_comment: page.last_generation_comment || 'Version before restore',
         });
-        
-        // Refresh the page and history
-        onUpdate();
-        
-        // Reset selection to current
-        setSelectedHistoryId('current');
-        
-      } catch (err) {
-        console.error('Failed to restore version:', err);
       }
+      
+      // Update page with restored HTML
+      await infographicsService.updatePage(page.id, {
+        generated_html: historyItem.generated_html,
+        last_generation_comment: `Restored from ${new Date(historyItem.created_at).toLocaleDateString()}: ${historyItem.user_comment}`
+      });
+      
+      // Refresh the page and history
+      onUpdate();
+      
+      // Reset selection to current and close modal
+      setSelectedHistoryId('current');
+      setShowRestoreModal(false);
+      setRestoreVersionId('');
+      
+    } catch (err) {
+      console.error('Failed to restore version:', err);
     }
   };
 
@@ -298,7 +298,10 @@ export function PageEditor({
                   {/* Restore Button */}
                   {selectedHistoryId !== 'current' && (
                     <button
-                      onClick={handleRestoreVersion}
+                      onClick={() => {
+                        setRestoreVersionId(selectedHistoryId);
+                        setShowRestoreModal(true);
+                      }}
                       className="flex items-center space-x-2 px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-all text-sm font-medium"
                     >
                       <RotateCcw className="w-4 h-4" />
@@ -374,6 +377,59 @@ export function PageEditor({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Restore Confirmation Modal */}
+        {showRestoreModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl border border-gray-100">
+              <div className="flex items-center mb-6">
+                <div className="p-3 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl mr-4">
+                  <RotateCcw className="w-6 h-6 text-green-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">Restore Version</h2>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-700 mb-4">
+                  Are you sure you want to restore this version as the current version?
+                </p>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-yellow-800 text-sm font-medium">
+                    ⚠️ This will replace the current HTML content. The current version will be saved to history before restoring.
+                  </p>
+                </div>
+                {restoreVersionId && (
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-600">
+                      <strong>Restoring version from:</strong> {new Date(pageHistory.find(h => h.id === restoreVersionId)?.created_at || '').toLocaleDateString()}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      <strong>Comment:</strong> {pageHistory.find(h => h.id === restoreVersionId)?.user_comment || 'No comment'}
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex items-center justify-end space-x-4">
+                <button
+                  onClick={() => {
+                    setShowRestoreModal(false);
+                    setRestoreVersionId('');
+                  }}
+                  className="px-6 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRestoreVersion}
+                  className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all font-medium"
+                >
+                  Restore Version
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
