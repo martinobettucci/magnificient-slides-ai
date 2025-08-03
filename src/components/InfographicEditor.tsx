@@ -618,23 +618,29 @@ function PageEditor({
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setActiveTab('edit')}
-                className={`p-3 rounded-lg transition-all ${
+                className={`group inline-flex items-center p-3 rounded-lg transition-all duration-300 overflow-hidden ${
                   activeTab === 'edit'
                     ? 'bg-indigo-600 text-white shadow-md'
                     : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50'
                 }`}
               >
                 <Code className="w-5 h-5" />
+                <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+                  Edit Content
+                </span>
               </button>
               <button
                 onClick={() => setActiveTab('preview')}
-                className={`p-3 rounded-lg transition-all ${
+                className={`group inline-flex items-center p-3 rounded-lg transition-all duration-300 overflow-hidden ${
                   activeTab === 'preview'
                     ? 'bg-emerald-600 text-white shadow-md'
                     : 'text-gray-600 hover:text-emerald-600 hover:bg-emerald-50'
                 }`}
               >
                 <Eye className="w-5 h-5" />
+                <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+                  Preview Page
+                </span>
               </button>
             </div>
           </div>
