@@ -39,6 +39,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(new Set());
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const [originalPages, setOriginalPages] = useState<InfographicPage[]>([]);
+  const [queueStatus, setQueueStatus] = useState<Map<string, string>>(new Map());
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -48,6 +49,11 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
 
   useEffect(() => {
     loadPages();
+    
+    // Start polling for queue status
+    const pollInterval = setInterval(pollQueueStatus, 3000);
+    
+    return () => clearInterval(pollInterval);
   }, [infographic.id]);
 
   const loadPages = async () => {
@@ -73,6 +79,37 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to delete page');
       }
+    }
+  };
+
+  const pollQueueStatus = async () => {
+    try {
+      if (pages.length === 0) return;
+      
+      const pageIds = pages.map(p => p.id);
+      const queueItems = await infographicsService.getGenerationQueueStatus(pageIds);
+      
+      const statusMap = new Map<string, string>();
+      queueItems.forEach(item => {
+        statusMap.set(item.infographic_page_id, item.status);
+      });
+      
+      setQueueStatus(statusMap);
+      
+      // If any items completed, reload pages to get updated HTML
+      const completedItems = queueItems.filter(item => item.status === 'completed');
+      if (completedItems.length > 0) {
+        await loadPages();
+        
+        // Update selected page if it was completed
+        if (selectedPage && completedItems.some(item => item.infographic_page_id === selectedPage.id)) {
+          const updatedPage = await infographicsService.getPage(selectedPage.id);
+          setSelectedPage(updatedPage);
+        }
+      }
+      
+    } catch (err) {
+      console.error('Error polling queue status:', err);
     }
   };
 
@@ -127,19 +164,14 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
     try {
       console.log('=== handleGenerateHtml Start ===');
       console.log('Generating HTML for page:', pageId);
-      setGeneratingHtml(prev => new Set([...prev, pageId]));
       setError(null);
       
-      await infographicsService.generatePageHtml(pageId);
+      const result = await infographicsService.generatePageHtml(pageId);
       console.log('HTML generation completed successfully');
       
-      await loadPages();
-      
-      // Update selected page if it's the one we just generated
-      if (selectedPage?.id === pageId) {
-        console.log('Updating selected page with new data');
-        const updatedPage = await infographicsService.getPage(pageId);
-        setSelectedPage(updatedPage);
+      if (result.queued) {
+        // Immediately poll to update status
+        await pollQueueStatus();
       }
       
       console.log('=== handleGenerateHtml Success ===');
@@ -154,22 +186,16 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate HTML';
       setError(`HTML Generation Error: ${errorMessage}`);
-    } finally {
-      setGeneratingHtml(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(pageId);
-        return newSet;
-      });
     }
   };
 
   const handleGenerateAllHtml = async () => {
     const pagesToGenerate = selectedPageIds.size > 0 
       ? pages.filter(page => selectedPageIds.has(page.id))
-      : pages.filter(page => !page.generated_html);
+      : pages.filter(page => !page.generated_html && !queueStatus.has(page.id));
     
     if (pagesToGenerate.length === 0) {
-      setError(selectedPageIds.size > 0 ? 'No pages selected for generation' : 'All pages already have generated HTML');
+      setError(selectedPageIds.size > 0 ? 'No pages selected for generation' : 'All pages already have generated HTML or are queued');
       return;
     }
 
@@ -181,6 +207,9 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       
       // Wait for all to complete
       await Promise.allSettled(promises);
+      
+      // Poll immediately to update status
+      await pollQueueStatus();
       
     } catch (err) {
       console.error('Error in batch generation:', err);
@@ -262,16 +291,16 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                 Slideshow
               </span>
             </button>
-            {(selectedPageIds.size > 0 || pages.some(page => !page.generated_html)) && (
+            {(selectedPageIds.size > 0 || pages.some(page => !page.generated_html && !queueStatus.has(page.id))) && (
               <button
                 onClick={handleGenerateAllHtml}
-                disabled={generatingHtml.size > 0}
+                disabled={queueStatus.size > 0}
                 className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-white bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl hover:from-purple-600 hover:to-pink-700 disabled:opacity-50 transition-all duration-300 font-medium overflow-hidden"
               >
                 <Sparkles className="w-4 h-4" />
                 <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-                  {generatingHtml.size > 0 
-                    ? `Generating ${generatingHtml.size}...` 
+                  {queueStatus.size > 0 
+                    ? `Processing ${queueStatus.size}...` 
                     : selectedPageIds.size > 0 
                       ? `Generate Selected (${selectedPageIds.size})`
                       : 'Generate All'
@@ -390,7 +419,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                         index={index}
                         isSelected={selectedPage?.id === page.id}
                         isChecked={selectedPageIds.has(page.id)}
-                        isGenerating={generatingHtml.has(page.id)}
+                       queueStatus={queueStatus.get(page.id)}
                         isEditingOrder={isEditingOrder}
                         onSelect={() => !isEditingOrder && setSelectedPage(page)}
                         onCheck={(checked) => handleSelectPage(page.id, checked)}
@@ -457,7 +486,7 @@ function SortablePageItem({
   index,
   isSelected,
   isChecked,
- isGenerating,
+  queueStatus,
   isEditingOrder,
   onSelect,
   onCheck,
@@ -467,7 +496,7 @@ function SortablePageItem({
   index: number;
   isSelected: boolean;
   isChecked: boolean;
- isGenerating: boolean;
+  queueStatus?: string;
   isEditingOrder: boolean;
   onSelect: () => void;
   onCheck: (checked: boolean) => void;
@@ -506,7 +535,7 @@ function SortablePageItem({
               e.stopPropagation();
               onCheck(e.target.checked);
             }}
-            className="mt-1.5 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded flex-shrink-0"
+            queueStatus={queueStatus.get(selectedPage.id)}
           />
         )}
         
@@ -548,14 +577,22 @@ function SortablePageItem({
           
           <div className="flex items-center justify-between">
             <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${
-             isGenerating
+              queueStatus === 'pending'
+                ? 'bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800'
+                : queueStatus === 'processing'
                 ? 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800'
+                : queueStatus === 'failed'
+                ? 'bg-gradient-to-r from-red-100 to-pink-100 text-red-800'
                 : page.generated_html 
                   ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800' 
                   : 'bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800'
             }`}>
-             {isGenerating 
-               ? 'Generating...' 
+              {queueStatus === 'pending'
+                ? 'Queued'
+                : queueStatus === 'processing'
+                ? 'Processing...'
+                : queueStatus === 'failed'
+                ? 'Failed'
                 : page.generated_html 
                   ? 'Generated' 
                   : 'Draft'
@@ -574,13 +611,13 @@ function PageEditor({
   infographic, 
   onUpdate, 
   onGenerateHtml, 
- isQueued
+  queueStatus
 }: {
   page: InfographicPage;
   infographic: Infographic;
   onUpdate: () => void;
   onGenerateHtml: () => void;
-  isQueued: boolean;
+  queueStatus?: string;
 }) {
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [formData, setFormData] = useState({
@@ -657,12 +694,12 @@ function PageEditor({
             </button>
             <button
               onClick={onGenerateHtml}
-              disabled={isQueued}
+              disabled={!!queueStatus}
               className="group p-3 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all duration-300 disabled:opacity-50 shadow-sm inline-flex items-center overflow-hidden"
             >
               <Sparkles className="w-5 h-5" />
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
-                {isQueued ? 'Queued...' : 'Generate HTML'}
+                {queueStatus === 'pending' ? 'Queued' : queueStatus === 'processing' ? 'Processing...' : 'Generate HTML'}
               </span>
             </button>
           </div>
@@ -714,12 +751,12 @@ function PageEditor({
                   <p className="text-gray-600 mb-6">Generate HTML to see the preview of your page</p>
                   <button
                     onClick={onGenerateHtml}
-                    disabled={isQueued}
+                    disabled={!!queueStatus}
                     className="group px-3 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium inline-flex items-center overflow-hidden"
                   >
                     <Sparkles className="w-5 h-5 mr-2" />
                     <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-                      {isQueued ? 'Queued...' : 'Generate HTML'}
+                      {queueStatus === 'pending' ? 'Queued' : queueStatus === 'processing' ? 'Processing...' : 'Generate HTML'}
                     </span>
                   </button>
                 </div>
