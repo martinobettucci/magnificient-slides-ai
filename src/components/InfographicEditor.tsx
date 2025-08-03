@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Play, Settings, Zap, FileDown } from 'lucide-react';
+import { ArrowLeft, Plus, Play, Settings, Zap, FileDown, Sparkles } from 'lucide-react';
 import { infographicsService, Infographic, InfographicPage, supabase } from '../lib/supabase';
 import { InfographicSlideshow } from './InfographicSlideshow';
 import { MarkdownImporter } from './InfographicEditor/MarkdownImporter';
