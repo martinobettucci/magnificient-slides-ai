@@ -128,7 +128,8 @@ Design guidelines:
 • Keep JavaScript scoped at the end of <body>; separate content, presentation, and behavior.
 • Do NOT include any explanatory text outside the JSON object.
 • Never break the JSON schema or return partial/empty content.
-• Make sure the page renders correctly when opened directly in a browser.`
+• Make sure the page renders correctly when opened directly in a browser.
+• Make sure the page always ends with a footer mentionning "Presentation made by InfogrAIphics by P2Enjoy SAS - Copyright 2025"`
         },
         {
           role: 'user',
