@@ -49,6 +49,17 @@ export interface InfographicPage {
   updated_at: string;
 }
 
+export interface GenerationQueueItem {
+  id: string;
+  infographic_page_id: string;
+  user_id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  requested_at: string;
+  processed_at: string | null;
+  error_message: string | null;
+  created_at: string;
+}
+
 // Database functions
 export const infographicsService = {
   // Infographics
@@ -163,98 +174,52 @@ export const infographicsService = {
   // Generate page HTML using the edge function
   async generatePageHtml(pageId: string) {
     console.log('=== generatePageHtml Start ===');
-    console.log('Page ID:', pageId);
+    console.log('Enqueueing generation for page ID:', pageId);
     
     try {
-      console.log('Fetching page data...');
-    const page = await this.getPage(pageId);
-      console.log('Page data:', {
-        id: page.id,
-        title: page.title,
-        contentLength: page.content_markdown?.length || 0,
-        infographicId: page.infographic_id
-      });
-      
-      console.log('Fetching infographic data...');
-    const infographic = await this.getInfographic(page.infographic_id);
-      console.log('Infographic data:', {
-        id: infographic.id,
-        name: infographic.name,
-        descriptionLength: infographic.description?.length || 0,
-        styleDescriptionLength: infographic.style_description?.length || 0
-      });
-
-      const requestPayload = {
-        title: page.title,
-        contentMarkdown: page.content_markdown,
-        styleDescription: infographic.style_description,
-        projectDescription: infographic.description,
-      };
-      
-      console.log('Request payload:', {
-        title: requestPayload.title,
-        contentMarkdownLength: requestPayload.contentMarkdown?.length || 0,
-        styleDescriptionLength: requestPayload.styleDescription?.length || 0,
-        projectDescriptionLength: requestPayload.projectDescription?.length || 0
-      });
-      
-      const apiUrl = `${supabaseUrl}/functions/v1/generate-infographic-page`;
-      console.log('Making request to:', apiUrl);
-      
-    const response = await fetch(`${supabaseUrl}/functions/v1/generate-infographic-page`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${supabaseAnonKey}`,
-        'Content-Type': 'application/json',
-      },
-        body: JSON.stringify(requestPayload),
-    });
-
-      console.log('Edge function response:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-      
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Edge function error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorText: errorText
-        });
-        
-        let errorDetails = 'Unknown error';
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorDetails = errorJson.details || errorJson.error || errorText;
-        } catch (parseError) {
-          console.error('Failed to parse error response as JSON:', parseError);
-          errorDetails = errorText;
-        }
-        
-        throw new Error(`Failed to generate page HTML (${response.status}): ${errorDetails}`);
-    }
-
-      console.log('Parsing successful response...');
-    const { generatedHtml } = await response.json();
-      console.log('Generated HTML received:', {
-        length: generatedHtml?.length || 0,
-        preview: generatedHtml?.substring(0, 200) + '...' || 'No content'
-      });
-
-      if (!generatedHtml) {
-        throw new Error('No HTML content received from edge function');
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
       }
       
-    // Update the page with generated HTML
-      console.log('Updating page with generated HTML...');
-    await this.updatePage(pageId, { generated_html: generatedHtml });
-      console.log('Page updated successfully');
-      console.log('=== generatePageHtml Success ===');
-
-    return generatedHtml;
+      // Check if there's already a pending/processing request for this page
+      const { data: existingQueue, error: queueCheckError } = await supabase
+        .from('generation_queue')
+        .select('*')
+        .eq('infographic_page_id', pageId)
+        .in('status', ['pending', 'processing'])
+        .maybeSingle();
+      
+      if (queueCheckError) {
+        console.error('Error checking existing queue:', queueCheckError);
+      }
+      
+      if (existingQueue) {
+        console.log('Generation already queued for this page:', existingQueue.status);
+        return { queued: true, queueId: existingQueue.id, status: existingQueue.status };
+      }
+      
+      // Add to generation queue
+      const { data: queueItem, error: queueError } = await supabase
+        .from('generation_queue')
+        .insert({
+          infographic_page_id: pageId,
+          user_id: user.id,
+          status: 'pending'
+        })
+        .select()
+        .single();
+      
+      if (queueError) {
+        throw new Error(`Failed to enqueue generation: ${queueError.message}`);
+      }
+      
+      console.log('Generation request enqueued:', queueItem.id);
+      console.log('=== generatePageHtml Success (Enqueued) ===');
+      
+      return { queued: true, queueId: queueItem.id, status: 'pending' };
+      
     } catch (error) {
       console.error('=== generatePageHtml Error ===');
       console.error('Error details:', {
@@ -264,6 +229,50 @@ export const infographicsService = {
       });
       throw error;
     }
+  },
+
+  // Get generation queue status for pages
+  async getGenerationQueueStatus(pageIds: string[]) {
+    if (pageIds.length === 0) return [];
+    
+    const { data, error } = await supabase
+      .from('generation_queue')
+      .select('*')
+      .in('infographic_page_id', pageIds)
+      .in('status', ['pending', 'processing'])
+      .order('requested_at', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching queue status:', error);
+      return [];
+    }
+    
+    return data as GenerationQueueItem[];
+  },
+
+  // Get user's generation queue items
+  async getUserGenerationQueue() {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('User not authenticated');
+    }
+    
+    const { data, error } = await supabase
+      .from('generation_queue')
+      .select(`
+        *,
+        infographic_pages (
+          title,
+          infographics (
+            name
+          )
+        )
+      `)
+      .eq('user_id', user.id)
+      .order('requested_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
   },
 
   // Generate style guidelines using the edge function

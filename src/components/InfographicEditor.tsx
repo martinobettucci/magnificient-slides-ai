@@ -415,7 +415,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               infographic={infographic}
               onUpdate={loadPages}
               onGenerateHtml={() => handleGenerateHtml(selectedPage.id)}
-              isGenerating={generatingHtml.has(selectedPage.id)}
+             isQueued={queuedPages.has(selectedPage.id)}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500 overflow-hidden">
@@ -457,7 +457,7 @@ function SortablePageItem({
   index,
   isSelected,
   isChecked,
-  isGenerating,
+  isQueued,
   isEditingOrder,
   onSelect,
   onCheck,
@@ -467,7 +467,7 @@ function SortablePageItem({
   index: number;
   isSelected: boolean;
   isChecked: boolean;
-  isGenerating: boolean;
+  isQueued: boolean;
   isEditingOrder: boolean;
   onSelect: () => void;
   onCheck: (checked: boolean) => void;
@@ -548,14 +548,14 @@ function SortablePageItem({
           
           <div className="flex items-center justify-between">
             <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${
-              isGenerating
+              isQueued
                 ? 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800'
                 : page.generated_html 
                   ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800' 
                   : 'bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800'
             }`}>
-              {isGenerating 
-                ? 'Generating...' 
+              {isQueued 
+                ? 'Queued...' 
                 : page.generated_html 
                   ? 'Generated' 
                   : 'Draft'
@@ -574,13 +574,13 @@ function PageEditor({
   infographic, 
   onUpdate, 
   onGenerateHtml, 
-  isGenerating 
+  isQueued 
 }: {
   page: InfographicPage;
   infographic: Infographic;
   onUpdate: () => void;
   onGenerateHtml: () => void;
-  isGenerating: boolean;
+  isQueued: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [formData, setFormData] = useState({
@@ -657,12 +657,12 @@ function PageEditor({
             </button>
             <button
               onClick={onGenerateHtml}
-              disabled={isGenerating}
+              disabled={isQueued}
               className="group p-3 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all duration-300 disabled:opacity-50 shadow-sm inline-flex items-center overflow-hidden"
             >
               <Sparkles className="w-5 h-5" />
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
-                {isGenerating ? 'Generating...' : 'Generate HTML'}
+                {isQueued ? 'Queued...' : 'Generate HTML'}
               </span>
             </button>
           </div>
@@ -714,12 +714,12 @@ function PageEditor({
                   <p className="text-gray-600 mb-6">Generate HTML to see the preview of your page</p>
                   <button
                     onClick={onGenerateHtml}
-                    disabled={isGenerating}
+                    disabled={isQueued}
                     className="group px-3 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium inline-flex items-center overflow-hidden"
                   >
                     <Sparkles className="w-5 h-5 mr-2" />
                     <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-                      {isGenerating ? 'Generating...' : 'Generate HTML'}
+                      {isQueued ? 'Queued...' : 'Generate HTML'}
                     </span>
                   </button>
                 </div>
