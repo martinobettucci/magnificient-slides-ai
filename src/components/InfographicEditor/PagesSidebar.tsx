@@ -117,18 +117,21 @@ export function PagesSidebar({
           <h2 className="text-lg font-bold text-gray-900">Pages ({pages.length})</h2>
           <button
             onClick={onShowMarkdownImporter}
-            className="px-4 py-2 bg-red-500 text-white font-bold rounded hover:bg-red-600"
+            className="px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700"
           >
-            IMPORT
+            Import
           </button>
         </div>
-        
+
+        {/* BIG IMPORT BUTTON */}
         <button
           onClick={onShowMarkdownImporter}
-          className="w-full mb-4 px-4 py-3 bg-green-500 text-white font-bold text-lg rounded border-2 border-green-700"
+          className="w-full mb-4 px-4 py-3 bg-red-600 text-white font-bold text-center rounded-lg hover:bg-red-700"
         >
           IMPORT MARKDOWN
         </button>
+        
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             {isEditingOrder ? (
               <>
@@ -191,15 +194,6 @@ export function PagesSidebar({
             </p>
           </div>
         )}
-
-        {/* Import Markdown Button - Full Width and Prominent */}
-        <button
-          onClick={onShowMarkdownImporter}
-          className="w-full mb-4 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg border-2 border-blue-700 transition-colors duration-200 flex items-center justify-center space-x-2"
-        >
-          <Upload className="w-5 h-5" />
-          <span>Import from Markdown</span>
-        </button>
 
         {(selectedPageIds.size > 0 || pages.some(page => !page.generated_html && !pageRecentStatusMap.has(page.id))) && !isEditingOrder && (
           <div className="mb-4">
