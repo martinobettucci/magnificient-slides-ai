@@ -535,7 +535,6 @@ function SortablePageItem({
               e.stopPropagation();
               onCheck(e.target.checked);
             }}
-            queueStatus={queueStatus.get(selectedPage.id)}
           />
         )}
         
