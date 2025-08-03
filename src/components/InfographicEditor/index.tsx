@@ -357,6 +357,15 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                 Import Markdown
               </span>
             </button>
+            <button
+              onClick={() => setShowMarkdownImporter(true)}
+              className="group inline-flex items-center justify-center px-3 py-2.5 h-10 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 font-medium overflow-hidden border-2 border-blue-300"
+            >
+              <Upload className="w-4 h-4" />
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
+                Import Markdown
+              </span>
+            </button>
           </div>
         </div>
       </div>
