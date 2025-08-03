@@ -4,6 +4,12 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')!;
 
+console.log('Queue worker starting with environment:', {
+  hasSupabaseUrl: !!SUPABASE_URL,
+  hasServiceRoleKey: !!SUPABASE_SERVICE_ROLE_KEY,
+  hasOpenAIKey: !!OPENAI_API_KEY
+});
+
 // Create Supabase client with service role key for full access
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -248,12 +254,18 @@ async function processQueue(): Promise<void> {
       return;
     }
 
+    console.log('Queue query result:', {
+      itemsFound: queueItems?.length || 0,
+      items: queueItems
+    });
+
     if (!queueItems || queueItems.length === 0) {
       console.log('No pending items in queue');
       return;
     }
 
     const queueItem = queueItems[0] as QueueItem;
+    console.log('Processing queue item:', queueItem);
     await processQueueItem(queueItem);
 
   } catch (error) {
@@ -296,6 +308,7 @@ Deno.serve(async (req: Request) => {
       
       if (action === 'start-worker') {
         // Start the worker (this will run indefinitely)
+        console.log('Starting continuous worker...');
         runWorker().catch(console.error);
         
         return new Response(
@@ -309,6 +322,7 @@ Deno.serve(async (req: Request) => {
       
       if (action === 'process-once') {
         // Process one item from the queue
+        console.log('Processing one queue item...');
         await processQueue();
         
         return new Response(

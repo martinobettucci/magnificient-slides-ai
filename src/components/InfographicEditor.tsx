@@ -233,7 +233,27 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       setError(null);
       
       console.log('Triggering queue worker to process all pending items...');
-      await infographicsService.triggerQueueWorker();
+      
+      // Process items one by one until queue is empty
+      let processed = 0;
+      const maxAttempts = 10; // Prevent infinite loops
+      
+      while (processed < maxAttempts && activeQueueCount > 0) {
+        console.log(`Processing attempt ${processed + 1}...`);
+        await infographicsService.triggerQueueWorker();
+        
+        // Wait a bit for processing
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Check if there are still pending items
+        await pollQueueStatus();
+        processed++;
+        
+        if (activeQueueCount === 0) {
+          console.log('All queue items processed');
+          break;
+        }
+      }
       
       // Real-time subscription will handle the updates automatically
       
