@@ -331,3 +331,5 @@ export function PageEditor({
     </div>
   );
 }
+
+export { PageEditor }
