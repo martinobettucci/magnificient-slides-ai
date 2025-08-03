@@ -122,25 +122,6 @@ export function PagesSidebar({
             Import
           </button>
         </div>
-
-        {/* ENHANCED VISIBLE IMPORT BUTTON */}
-        <button
-          onClick={onShowMarkdownImporter}
-          className="w-full mb-6 px-6 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-lg text-center rounded-xl hover:from-red-600 hover:to-red-700 active:from-red-700 active:to-red-800 transform hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg hover:shadow-xl border-2 border-red-400 relative overflow-hidden group"
-          style={{
-            minHeight: '60px',
-            zIndex: 10,
-            position: 'relative'
-          }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-red-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <div className="relative z-10 flex items-center justify-center space-x-3">
-            <Upload className="w-6 h-6" />
-            <span>IMPORT MARKDOWN</span>
-          </div>
-          {/* Animated background effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-        </button>
         
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
