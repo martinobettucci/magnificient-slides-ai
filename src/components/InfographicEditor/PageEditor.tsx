@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Code, Eye, Save, Sparkles } from 'lucide-react';
-import { infographicsService, Infographic, InfographicPage } from '../../lib/supabase';
+import { Code, Eye, Save, Sparkles, History, ChevronDown, MessageSquare } from 'lucide-react';
+import { infographicsService, Infographic, InfographicPage, InfographicPageHistory } from '../../lib/supabase';
 
 interface PageEditorProps {
   page: InfographicPage;
@@ -23,6 +23,11 @@ export function PageEditor({
     content_markdown: page.content_markdown,
   });
   const [saving, setSaving] = useState(false);
+  const [pageHistory, setPageHistory] = useState<InfographicPageHistory[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string>('current');
+  const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
+  const [regenerateComment, setRegenerateComment] = useState('');
+  const [showRegeneratePrompt, setShowRegeneratePrompt] = useState(false);
 
   // Update form data when page changes
   useEffect(() => {
@@ -31,6 +36,48 @@ export function PageEditor({
       content_markdown: page.content_markdown,
     });
   }, [page.id, page.title, page.content_markdown]);
+
+  // Load page history when page changes
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const history = await infographicsService.getPageHistory(page.id);
+        setPageHistory(history);
+        setSelectedHistoryId('current');
+      } catch (err) {
+        console.error('Failed to load page history:', err);
+      }
+    };
+
+    loadHistory();
+  }, [page.id]);
+
+  const getSelectedHtml = () => {
+    if (selectedHistoryId === 'current') {
+      return page.generated_html || '';
+    }
+    const historyItem = pageHistory.find(h => h.id === selectedHistoryId);
+    return historyItem?.generated_html || '';
+  };
+
+  const getSelectedComment = () => {
+    if (selectedHistoryId === 'current') {
+      return page.last_generation_comment || 'Latest generated version';
+    }
+    const historyItem = pageHistory.find(h => h.id === selectedHistoryId);
+    return historyItem?.user_comment || 'No comment';
+  };
+
+  const handleRegenerateWithComment = async () => {
+    try {
+      await infographicsService.generatePageHtml(page.id, regenerateComment.trim());
+      setShowRegeneratePrompt(false);
+      setRegenerateComment('');
+      onUpdate();
+    } catch (err) {
+      console.error('Failed to regenerate with comment:', err);
+    }
+  };
 
   const handleSave = async () => {
     try {
