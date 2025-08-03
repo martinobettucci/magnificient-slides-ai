@@ -19,7 +19,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { infographicsService, Infographic, InfographicPage } from '../lib/supabase';
+import { infographicsService, Infographic, InfographicPage, supabase } from '../lib/supabase';
 import { InfographicSlideshow } from './InfographicSlideshow';
 
 interface InfographicEditorProps {
