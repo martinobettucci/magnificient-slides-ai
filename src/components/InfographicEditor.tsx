@@ -42,6 +42,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   const [pageRecentStatusMap, setPageRecentStatusMap] = useState<Map<string, string>>(new Map());
   const [activeQueueCount, setActiveQueueCount] = useState(0);
   const [triggeringWorker, setTriggeringWorker] = useState(false);
+  const [realtimeSubscription, setRealtimeSubscription] = useState<any>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -52,11 +53,62 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   useEffect(() => {
     loadPages();
     
-    // Start polling for queue status
-    const pollInterval = setInterval(pollQueueStatus, 3000);
+    // Initial queue status load
+    pollQueueStatus();
     
-    return () => clearInterval(pollInterval);
+    // Set up real-time subscription for queue updates
+    setupRealtimeSubscription();
+    
+    return () => {
+      if (realtimeSubscription) {
+        realtimeSubscription.unsubscribe();
+      }
+    };
   }, [infographic.id]);
+
+  const setupRealtimeSubscription = () => {
+    // Clean up existing subscription
+    if (realtimeSubscription) {
+      realtimeSubscription.unsubscribe();
+    }
+
+    // Subscribe to changes in the generation_queue table
+    const subscription = supabase
+      .channel('generation_queue_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'generation_queue'
+        },
+        (payload) => {
+          console.log('Real-time queue update:', payload);
+          // Refresh queue status when any change occurs
+          pollQueueStatus();
+          
+          // If a page was completed, reload pages to get updated HTML
+          if (payload.eventType === 'UPDATE' && payload.new?.status === 'completed') {
+            loadPages();
+            
+            // Update selected page if it was completed
+            if (selectedPage && payload.new?.infographic_page_id === selectedPage.id) {
+              infographicsService.getPage(selectedPage.id).then(updatedPage => {
+                setSelectedPage(updatedPage);
+              }).catch(console.error);
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to generation queue updates');
+        }
+      });
+
+    setRealtimeSubscription(subscription);
+  };
 
   const loadPages = async () => {
     try {
@@ -112,12 +164,14 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       // If any items completed, reload pages to get updated HTML
       const completedItems = queueItems.filter(item => item.status === 'completed');
       if (completedItems.length > 0) {
-        await loadPages();
+        // Don't reload pages here since real-time subscription handles it
+        // await loadPages();
         
         // Update selected page if it was completed
         if (selectedPage && completedItems.some(item => item.infographic_page_id === selectedPage.id)) {
-          const updatedPage = await infographicsService.getPage(selectedPage.id);
-          setSelectedPage(updatedPage);
+          // Don't update here since real-time subscription handles it
+          // const updatedPage = await infographicsService.getPage(selectedPage.id);
+          // setSelectedPage(updatedPage);
         }
       }
       
@@ -181,8 +235,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       console.log('Triggering queue worker to process all pending items...');
       await infographicsService.triggerQueueWorker();
       
-      // Poll immediately to update status
-      await pollQueueStatus();
+      // Real-time subscription will handle the updates automatically
       
     } catch (err) {
       console.error('Error triggering queue worker:', err);
@@ -201,10 +254,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       const result = await infographicsService.generatePageHtml(pageId);
       console.log('HTML generation completed successfully');
       
-      if (result.queued) {
-        // Immediately poll to update status
-        await pollQueueStatus();
-      }
+      // Real-time subscription will handle the updates automatically
       
       console.log('=== handleGenerateHtml Success ===');
     } catch (err) {
@@ -240,8 +290,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       // Wait for all to complete
       await Promise.allSettled(promises);
       
-      // Poll immediately to update status
-      await pollQueueStatus();
+      // Real-time subscription will handle the updates automatically
       
     } catch (err) {
       console.error('Error in batch generation:', err);
