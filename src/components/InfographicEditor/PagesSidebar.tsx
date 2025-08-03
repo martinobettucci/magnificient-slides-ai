@@ -115,6 +115,12 @@ export function PagesSidebar({
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">Pages ({pages.length})</h2>
+          <button
+            onClick={onShowMarkdownImporter}
+            className="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Import MD
+          </button>
           <div className="flex items-center space-x-2">
             {isEditingOrder ? (
               <>
