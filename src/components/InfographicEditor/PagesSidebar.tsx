@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Edit3, Save, X, CheckSquare, Square, Sparkles, Upload } from 'lucide-react';
+import { FileText, Edit3, Save, X, CheckSquare, Square, Sparkles } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -24,7 +24,6 @@ interface PagesSidebarProps {
   selectedPageIds: Set<string>;
   pageRecentStatusMap: Map<string, string>;
   activeQueueCount: number;
-  onShowMarkdownImporter: () => void;
   onSelectPage: (page: InfographicPage) => void;
   onSelectPageId: (pageId: string, selected: boolean) => void;
   onSelectAll: () => void;
@@ -39,7 +38,6 @@ export function PagesSidebar({
   selectedPageIds,
   pageRecentStatusMap,
   activeQueueCount,
-  onShowMarkdownImporter,
   onSelectPage,
   onSelectPageId,
   onSelectAll,
@@ -153,15 +151,6 @@ export function PagesSidebar({
               </>
             ) : (
               <>
-                <button
-                  onClick={onShowMarkdownImporter}
-                  className="group text-xs text-gray-600 hover:text-gray-800 transition-all duration-300 px-2 py-1.5 bg-gray-100 rounded-lg font-medium overflow-hidden inline-flex items-center"
-                >
-                  <Upload className="w-3 h-3" />
-                  <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-                    Import
-                  </span>
-                </button>
                 {pages.length > 1 && (
                   <button
                     onClick={handleStartEditOrder}
