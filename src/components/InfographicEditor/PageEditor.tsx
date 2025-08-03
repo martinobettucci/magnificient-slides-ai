@@ -148,6 +148,7 @@ export function PageEditor({
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
                 {saving ? 'Saving...' : 'Save'}
               </span>
+            </button>
               <button
                 onClick={() => onGenerateHtml()}
                 disabled={!!queueStatus}
@@ -168,7 +169,6 @@ export function PageEditor({
                   With Feedback
                 </span>
               </button>
-            </div>
           </div>
         </div>
         
@@ -385,7 +385,7 @@ export function PageEditor({
             )}
           </div>
         )}
-                <div className="mx-4 mb-4 bg-purple-50 border border-purple-200 rounded-xl p-4">
+      </div>
     </div>
   );
 }
