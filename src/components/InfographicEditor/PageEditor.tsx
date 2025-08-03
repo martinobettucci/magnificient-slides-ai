@@ -28,6 +28,8 @@ export function PageEditor({
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
   const [regenerateComment, setRegenerateComment] = useState('');
   const [showRegeneratePrompt, setShowRegeneratePrompt] = useState(false);
+  const [showFeedbackInput, setShowFeedbackInput] = useState(false);
+  const [feedbackComment, setFeedbackComment] = useState('');
 
   // Update form data when page changes
   useEffect(() => {
@@ -76,6 +78,16 @@ export function PageEditor({
       onUpdate();
     } catch (err) {
       console.error('Failed to regenerate with comment:', err);
+    }
+  };
+
+  const handleGenerateWithFeedback = async () => {
+    try {
+      await onGenerateHtml(feedbackComment.trim() || undefined);
+      setShowFeedbackInput(false);
+      setFeedbackComment('');
+    } catch (err) {
+      console.error('Failed to generate with feedback:', err);
     }
   };
 
@@ -137,18 +149,66 @@ export function PageEditor({
                 {saving ? 'Saving...' : 'Save'}
               </span>
             </button>
-            <button
-              onClick={onGenerateHtml}
-              disabled={!!queueStatus}
-              className="group p-3 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all duration-300 disabled:opacity-50 shadow-sm inline-flex items-center overflow-hidden"
-            >
-              <Sparkles className="w-5 h-5" />
-              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
-                {queueStatus === 'pending' ? 'Queued' : queueStatus === 'processing' ? 'Processing...' : 'Generate HTML'}
-              </span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => onGenerateHtml()}
+                disabled={!!queueStatus}
+                className="group p-3 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all duration-300 disabled:opacity-50 shadow-sm inline-flex items-center overflow-hidden"
+              >
+                <Sparkles className="w-5 h-5" />
+                <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+                  {queueStatus === 'pending' ? 'Queued' : queueStatus === 'processing' ? 'Processing...' : 'Generate HTML'}
+                </span>
+              </button>
+              <button
+                onClick={() => setShowFeedbackInput(!showFeedbackInput)}
+                disabled={!!queueStatus}
+                className="group p-3 text-purple-600 bg-purple-100 hover:bg-purple-200 rounded-lg transition-all duration-300 disabled:opacity-50 shadow-sm inline-flex items-center overflow-hidden"
+              >
+                <MessageSquare className="w-5 h-5" />
+                <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+                  With Feedback
+                </span>
+              </button>
+            </div>
           </div>
         </div>
+        
+        {/* Feedback Input */}
+        {showFeedbackInput && (
+          <div className="bg-purple-50 border-b border-purple-200 p-4">
+            <div className="mb-3">
+              <label className="block text-sm font-semibold text-purple-800 mb-2">
+                What specific changes or improvements would you like?
+              </label>
+              <textarea
+                value={feedbackComment}
+                onChange={(e) => setFeedbackComment(e.target.value)}
+                className="w-full px-3 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm resize-none"
+                rows={3}
+                placeholder="Describe what you want to change, improve, or add to the page..."
+              />
+            </div>
+            <div className="flex items-center justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowFeedbackInput(false);
+                  setFeedbackComment('');
+                }}
+                className="px-3 py-2 text-gray-600 hover:text-gray-800 text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleGenerateWithFeedback}
+                disabled={!!queueStatus}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg disabled:opacity-50 text-sm font-medium"
+              >
+                Generate with Feedback
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Content */}
