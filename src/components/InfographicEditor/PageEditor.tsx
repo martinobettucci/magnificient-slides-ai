@@ -143,24 +143,15 @@ export function PageEditor({
           </div>
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => onGenerateHtml()}
-              disabled={hasActiveQueueJob}
-              className="group p-3 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all duration-300 disabled:opacity-50 shadow-sm inline-flex items-center overflow-hidden"
-            >
-              <Sparkles className="w-5 h-5" />
-              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
-                {queueStatus === 'pending' ? 'Queued' : queueStatus === 'processing' ? 'Processing...' : 'Generate HTML'}
-              </span>
-            </button>
-            <button
-              onClick={() => setShowFeedbackInput(!showFeedbackInput)}
-              className="group p-3 text-purple-600 bg-purple-100 hover:bg-purple-200 rounded-lg transition-all duration-300 disabled:opacity-50 shadow-sm inline-flex items-center overflow-hidden"
-            >
-              <MessageSquare className="w-5 h-5" />
-              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
-                With Feedback
-              </span>
-            </button>
+                onClick={() => onGenerateHtml()}
+                disabled={hasActiveQueueJob}
+                className="group p-3 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all duration-300 disabled:opacity-50 shadow-sm inline-flex items-center overflow-hidden"
+              >
+                <Sparkles className="w-5 h-5" />
+                <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+                  {queueStatus === 'pending' ? 'Queued' : queueStatus === 'processing' ? 'Processing...' : 'Generate HTML'}
+                </span>
+              </button>
               <button
                 onClick={() => setShowFeedbackInput(!showFeedbackInput)}
                 className="group p-3 text-purple-600 bg-purple-100 hover:bg-purple-200 rounded-lg transition-all duration-300 disabled:opacity-50 shadow-sm inline-flex items-center overflow-hidden"
