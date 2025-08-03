@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText, Calendar, Edit, Trash2, Play, Sparkles, Layers } from 'lucide-react';
+import { Plus, FileText, Calendar, Edit, Trash2, Play, Sparkles, Layers, X } from 'lucide-react';
 import { infographicsService, Infographic } from '../lib/supabase';
 import { InfographicSlideshow } from './InfographicSlideshow';
 
@@ -156,7 +156,7 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
                 >
                   <Play className="w-4 h-4" />
                   <span className="max-w-0 group-hover/btn:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover/btn:ml-2">
-                    Show
+                    Slideshow
                   </span>
                 </button>
               </div>

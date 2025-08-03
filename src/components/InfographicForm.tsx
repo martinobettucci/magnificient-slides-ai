@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Save, Sparkles } from 'lucide-react';
+import { ArrowLeft, Save, Sparkles, X } from 'lucide-react';
 import { infographicsService, Infographic } from '../lib/supabase';
 
 interface InfographicFormProps {
@@ -189,6 +189,7 @@ export function InfographicForm({ infographic, onSave, onCancel }: InfographicFo
             onClick={onCancel}
             className="group inline-flex items-center px-3 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300 font-medium overflow-hidden"
           >
+            <X className="w-5 h-5 mr-2" />
             <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
               Cancel
             </span>

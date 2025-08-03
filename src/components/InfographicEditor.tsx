@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, FileText, Eye, Code, Trash2, Edit3, Play, Sparkles, Save } from 'lucide-react';
+import { ArrowLeft, Plus, FileText, Eye, Code, Trash2, Edit3, Play, Sparkles, Save, X, Settings, CheckSquare, Square } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -248,7 +248,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               onClick={onEdit}
               className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300 font-medium overflow-hidden"
             >
-              <Edit3 className="w-4 h-4 mr-2" />
+              <Settings className="w-4 h-4" />
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
                 Edit Project
               </span>
@@ -257,9 +257,9 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               onClick={() => setShowSlideshow(true)}
               className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 font-medium overflow-hidden"
             >
-              <Play className="w-4 h-4 mr-2" />
+              <Play className="w-4 h-4" />
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-                Show
+                Slideshow
               </span>
             </button>
             {(selectedPageIds.size > 0 || pages.some(page => !page.generated_html)) && (
@@ -268,7 +268,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                 disabled={generatingHtml.size > 0}
                 className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-white bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl hover:from-purple-600 hover:to-pink-700 disabled:opacity-50 transition-all duration-300 font-medium overflow-hidden"
               >
-                <Sparkles className="w-4 h-4 mr-2" />
+                <Sparkles className="w-4 h-4" />
                 <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
                   {generatingHtml.size > 0 
                     ? `Generating ${generatingHtml.size}...` 
@@ -283,7 +283,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               onClick={() => setShowPageForm(true)}
               className="group inline-flex items-center justify-center px-3 py-2.5 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 font-medium overflow-hidden"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4" />
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
                 Add Page
               </span>
@@ -311,6 +311,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                       onClick={handleCancelOrder}
                       className="group text-xs text-gray-600 hover:text-gray-800 transition-all duration-300 px-2 py-1.5 border border-gray-300 rounded-lg font-medium overflow-hidden inline-flex items-center"
                     >
+                      <X className="w-3 h-3" />
                       <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
                         Cancel
                       </span>
@@ -319,6 +320,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                       onClick={handleSaveOrder}
                       className="group text-xs text-blue-600 hover:text-blue-800 transition-all duration-300 px-2 py-1.5 bg-blue-100 rounded-lg font-medium overflow-hidden inline-flex items-center"
                     >
+                      <Save className="w-3 h-3" />
                       <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
                         Save Order
                       </span>
@@ -331,6 +333,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                         onClick={handleStartEditOrder}
                         className="group text-xs text-gray-600 hover:text-gray-800 transition-all duration-300 px-2 py-1.5 bg-gray-100 rounded-lg font-medium overflow-hidden inline-flex items-center"
                       >
+                        <Edit3 className="w-3 h-3" />
                         <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
                           Edit Order
                         </span>
@@ -341,6 +344,11 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                         onClick={handleSelectAll}
                         className="group text-xs text-indigo-600 hover:text-indigo-800 transition-all duration-300 px-2 py-1.5 bg-indigo-50 rounded-lg font-medium overflow-hidden inline-flex items-center"
                       >
+                        {selectedPageIds.size === pages.length ? (
+                          <CheckSquare className="w-3 h-3" />
+                        ) : (
+                          <Square className="w-3 h-3" />
+                        )}
                         <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
                           {selectedPageIds.size === pages.length ? 'Deselect All' : 'Select All'}
                         </span>
@@ -638,7 +646,7 @@ function PageEditor({
             >
               <Save className="w-5 h-5" />
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
-                Save
+                {saving ? 'Saving...' : 'Save'}
               </span>
             </button>
             <button
@@ -648,7 +656,7 @@ function PageEditor({
             >
               <Sparkles className="w-5 h-5" />
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
-                Generate
+                {isGenerating ? 'Generating...' : 'Generate HTML'}
               </span>
             </button>
           </div>
@@ -800,6 +808,7 @@ function PageFormModal({
               onClick={onCancel}
               className="group px-3 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300 font-medium inline-flex items-center overflow-hidden"
             >
+              <X className="w-5 h-5" />
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
                 Cancel
               </span>
@@ -809,7 +818,7 @@ function PageFormModal({
               disabled={saving || !formData.title.trim()}
               className="group px-3 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium inline-flex items-center overflow-hidden"
             >
-              <Plus className="w-5 h-5 mr-2" />
+              <Plus className="w-5 h-5" />
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
                 {saving ? 'Creating...' : 'Create Page'}
               </span>
