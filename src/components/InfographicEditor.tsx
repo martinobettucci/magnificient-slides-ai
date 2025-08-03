@@ -391,7 +391,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               isGenerating={generatingHtml.has(selectedPage.id)}
             />
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
+            <div className="flex items-center justify-center h-full text-gray-500 overflow-hidden">
               <div className="text-center">
                 <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <p>Select a page to edit or create a new one</p>
@@ -572,7 +572,7 @@ function PageEditor({
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Page Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-5 shadow-sm">
         <div className="flex items-center justify-between">
@@ -622,9 +622,9 @@ function PageEditor({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden min-h-0">
         {activeTab === 'edit' ? (
-          <div className="h-full p-6 space-y-6 bg-gradient-to-br from-gray-50 to-white">
+          <div className="h-full p-6 space-y-6 bg-gradient-to-br from-gray-50 to-white overflow-y-auto">
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-3">
                 Page Title
@@ -636,21 +636,20 @@ function PageEditor({
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white shadow-sm"
               />
             </div>
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col min-h-0">
               <label className="block text-sm font-semibold text-gray-800 mb-3">
                 Content (Markdown)
               </label>
               <textarea
                 value={formData.content_markdown}
                 onChange={(e) => setFormData(prev => ({ ...prev, content_markdown: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm transition-all bg-white shadow-sm resize-none"
-                style={{ height: 'calc(100vh - 300px)', minHeight: '400px' }}
+                className="flex-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm transition-all bg-white shadow-sm resize-none min-h-0"
                 placeholder="Enter your content in Markdown format..."
               />
             </div>
           </div>
         ) : (
-          <div className="h-full">
+          <div className="h-full overflow-hidden">
             {page.generated_html ? (
               <iframe
                 srcDoc={page.generated_html}
@@ -658,7 +657,7 @@ function PageEditor({
                 title={`Preview of ${page.title}`}
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500 bg-gradient-to-br from-gray-50 to-white">
+              <div className="flex items-center justify-center h-full text-gray-500 bg-gradient-to-br from-gray-50 to-white overflow-hidden">
                 <div className="text-center p-12 bg-white rounded-2xl shadow-xl border border-gray-100">
                   <div className="p-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
                     <Eye className="w-12 h-12 text-gray-400" />
