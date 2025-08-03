@@ -117,10 +117,18 @@ export function PagesSidebar({
           <h2 className="text-lg font-bold text-gray-900">Pages ({pages.length})</h2>
           <button
             onClick={onShowMarkdownImporter}
-            className="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-red-500 text-white font-bold rounded hover:bg-red-600"
           >
-            Import MD
+            IMPORT
           </button>
+        </div>
+        
+        <button
+          onClick={onShowMarkdownImporter}
+          className="w-full mb-4 px-4 py-3 bg-green-500 text-white font-bold text-lg rounded border-2 border-green-700"
+        >
+          IMPORT MARKDOWN
+        </button>
           <div className="flex items-center space-x-2">
             {isEditingOrder ? (
               <>
