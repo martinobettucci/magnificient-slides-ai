@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Code, Eye, Save, Sparkles, History, ChevronDown, MessageSquare } from 'lucide-react';
+import { Code, Eye, Save, Sparkles, History, ChevronDown, MessageSquare, RotateCcw } from 'lucide-react';
 import { infographicsService, Infographic, InfographicPage, InfographicPageHistory } from '../../lib/supabase';
 
 interface PageEditorProps {
@@ -79,6 +79,41 @@ export function PageEditor({
       onUpdate();
     } catch (err) {
       console.error('Failed to regenerate with comment:', err);
+    }
+  };
+
+  const handleRestoreVersion = async () => {
+    if (selectedHistoryId === 'current') return;
+    
+    const historyItem = pageHistory.find(h => h.id === selectedHistoryId);
+    if (!historyItem) return;
+    
+    if (confirm('Are you sure you want to restore this version as the current version? This will replace the current HTML.')) {
+      try {
+        // Save current version to history before restoring
+        if (page.generated_html) {
+          await infographicsService.createPageHistory({
+            infographic_page_id: page.id,
+            generated_html: page.generated_html,
+            user_comment: page.last_generation_comment || 'Version before restore',
+          });
+        }
+        
+        // Update page with restored HTML
+        await infographicsService.updatePage(page.id, {
+          generated_html: historyItem.generated_html,
+          last_generation_comment: `Restored from ${new Date(historyItem.created_at).toLocaleDateString()}: ${historyItem.user_comment}`
+        });
+        
+        // Refresh the page and history
+        onUpdate();
+        
+        // Reset selection to current
+        setSelectedHistoryId('current');
+        
+      } catch (err) {
+        console.error('Failed to restore version:', err);
+      }
     }
   };
 
@@ -257,6 +292,17 @@ export function PageEditor({
                     >
                       <MessageSquare className="w-4 h-4" />
                       <span>Regenerate with Feedback</span>
+                    </button>
+                  )}
+                  
+                  {/* Restore Button */}
+                  {selectedHistoryId !== 'current' && (
+                    <button
+                      onClick={handleRestoreVersion}
+                      className="flex items-center space-x-2 px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-all text-sm font-medium"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      <span>Restore as Current</span>
                     </button>
                   )}
                 </div>
