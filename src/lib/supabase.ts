@@ -284,9 +284,15 @@ export const infographicsService = {
   async triggerQueueWorker() {
     console.log('=== triggerQueueWorker Start ===');
     
+    // Validate environment variables
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Missing Supabase environment variables. Please check your .env file.');
+    }
+    
     try {
       const apiUrl = `${supabaseUrl}/functions/v1/queue-worker`;
       console.log('Triggering queue worker at:', apiUrl);
+      console.log('Using Supabase URL:', supabaseUrl);
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -324,8 +330,16 @@ export const infographicsService = {
       console.error('Error details:', {
         name: error.name,
         message: error.message,
-        stack: error.stack
+        stack: error.stack,
+        supabaseUrl: supabaseUrl,
+        hasAnonKey: !!supabaseAnonKey
       });
+      
+      // Provide more specific error messages
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        throw new Error(`Network error: Unable to reach Supabase Edge Function. Please check your VITE_SUPABASE_URL in .env file. Current URL: ${supabaseUrl}`);
+      }
+      
       throw error;
     }
   },
