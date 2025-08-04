@@ -4,7 +4,7 @@ import { InfographicsList } from './components/InfographicsList';
 import { InfographicForm } from './components/InfographicForm';
 import { InfographicEditor } from './components/InfographicEditor';
 import { LandingPage } from './components/LandingPage';
-import { Infographic, authService } from './lib/supabase';
+import { Infographic, authService, supabase } from './lib/supabase';
 import { LogOut } from 'lucide-react';
 
 type AppState = 
@@ -15,14 +15,29 @@ type AppState =
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [appState, setAppState] = useState<AppState>({ view: 'list' });
 
   useEffect(() => {
-    // Check current user
-    authService.getCurrentUser().then(user => {
-      setUser(user);
-      setLoading(false);
-    });
+    const initializeApp = async () => {
+      try {
+        // Check if Supabase is properly configured
+        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+          throw new Error('Missing Supabase configuration. Please check your environment variables.');
+        }
+
+        // Check current user
+        const user = await authService.getCurrentUser();
+        setUser(user);
+      } catch (err) {
+        console.error('App initialization error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to initialize app');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeApp();
 
     // Listen for auth changes
     const { data: { subscription } } = authService.onAuthStateChange((user) => {
@@ -65,7 +80,37 @@ function App() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading InforgrAIphics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-pink-50">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="bg-red-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+            <span className="text-red-600 text-2xl">⚠️</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Configuration Error</h1>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <div className="bg-gray-50 rounded-lg p-4 text-left">
+            <p className="text-sm text-gray-700 mb-2"><strong>Required environment variables:</strong></p>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>• VITE_SUPABASE_URL</li>
+              <li>• VITE_SUPABASE_ANON_KEY</li>
+            </ul>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-6 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
