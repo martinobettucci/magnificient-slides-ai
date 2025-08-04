@@ -27,6 +27,28 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   const [realtimeSubscription, setRealtimeSubscription] = useState<any>(null);
   const [showMarkdownImporter, setShowMarkdownImporter] = useState(false);
 
+  // Calculate page status counts
+  const pageStatusCounts = React.useMemo(() => {
+    let drafts = 0;
+    let queued = 0;
+    let generated = 0;
+    
+    pages.forEach(page => {
+      const status = pageRecentStatusMap.get(page.id);
+      if (status === 'pending' || status === 'processing') {
+        queued++;
+      } else if (page.generated_html) {
+        generated++;
+      } else {
+        drafts++;
+      }
+    });
+    
+    return { drafts, queued, generated, total: pages.length };
+  }, [pages, pageRecentStatusMap]);
+
+  const allPagesGenerated = pageStatusCounts.total > 0 && pageStatusCounts.generated === pageStatusCounts.total;
+
   useEffect(() => {
     loadPages();
   }, [infographic.id]);
@@ -304,6 +326,24 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                   : infographic.description
                 }
               </p>
+              
+              {/* Page Status Indicators */}
+              {pages.length > 0 && (
+                <div className="flex items-center space-x-4 mt-3 text-xs">
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                    <span className="text-gray-600">{pageStatusCounts.drafts} drafts</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                    <span className="text-gray-600">{pageStatusCounts.queued} queued</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <span className="text-gray-600">{pageStatusCounts.generated} ready</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center space-x-3">
@@ -318,11 +358,15 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
             </button>
             <button
               onClick={() => setShowSlideshow(true)}
-              className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 font-medium overflow-hidden"
+              className={`group inline-flex items-center justify-center px-3 py-2.5 h-10 text-white rounded-xl transition-all duration-300 font-medium overflow-hidden ${
+                allPagesGenerated 
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ring-2 ring-green-200' 
+                  : 'bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600'
+              }`}
             >
               <Play className="w-4 h-4" />
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-                Slideshow
+                {allPagesGenerated ? 'Ready to Present!' : 'Slideshow'}
               </span>
             </button>
             {activeQueueCount > 0 && (

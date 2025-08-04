@@ -150,23 +150,41 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
                   <Calendar className="w-4 h-4 mr-2" />
                   {new Date(infographic.updated_at).toLocaleDateString()}
                 </div>
+              
+              {/* Page Status Indicators */}
+              <div className="flex items-center space-x-3 text-xs">
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                  <span className="text-gray-600">0 drafts</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                  <span className="text-gray-600">0 queued</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                  <span className="text-gray-600">0 ready</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between relative z-10">
+              <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700">
+                <Edit className="w-3 h-3 mr-1" />
+                Project
+              </span>
+              
+              {/* Enhanced Play Button - shown when all pages are generated */}
+              <div className="opacity-0 group-hover:opacity-100 transition-all">
                 <button
                   onClick={(e) => handleShowSlideshow(infographic, e)}
-                  className="opacity-0 group-hover:opacity-100 group/btn inline-flex items-center p-2 text-gray-400 hover:text-green-500 hover:bg-green-50 rounded-lg transition-all overflow-hidden"
+                  className="group/btn inline-flex items-center px-3 py-2 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 overflow-hidden"
                 >
                   <Play className="w-4 h-4" />
                   <span className="max-w-0 group-hover/btn:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover/btn:ml-2">
                     Slideshow
                   </span>
                 </button>
-              </div>
-
-              <div className="flex items-center justify-between relative z-10">
-                <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700">
-                  <Edit className="w-3 h-3 mr-1" />
-                  Project
-                </span>
-                <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full"></div>
               </div>
             </div>
           ))}
