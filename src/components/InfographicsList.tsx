@@ -227,26 +227,28 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
               
               {/* Status indicators */}
               <div className="px-6 pb-4 relative z-10">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4 text-xs">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center space-x-3">
                     <div className="flex items-center space-x-1.5">
                       <div className="w-2.5 h-2.5 bg-yellow-400 rounded-full flex-shrink-0"></div>
-                      <span className="text-gray-600 font-medium">{infographic.statusCounts.drafts}</span>
-                      <span className="text-gray-500">drafts</span>
+                      <span className="text-gray-700 font-semibold">{infographic.statusCounts.drafts}</span>
+                      <span className="text-gray-500 font-medium">drafts</span>
                     </div>
                     <div className="flex items-center space-x-1.5">
                       <div className="w-2.5 h-2.5 bg-blue-400 rounded-full flex-shrink-0"></div>
-                      <span className="text-gray-600 font-medium">{infographic.statusCounts.queued}</span>
-                      <span className="text-gray-500">queued</span>
+                      <span className="text-gray-700 font-semibold">{infographic.statusCounts.queued}</span>
+                      <span className="text-gray-500 font-medium">queued</span>
                     </div>
                     <div className="flex items-center space-x-1.5">
                       <div className="w-2.5 h-2.5 bg-green-400 rounded-full flex-shrink-0"></div>
-                      <span className="text-gray-600 font-medium">{infographic.statusCounts.generated}</span>
-                      <span className="text-gray-500">ready</span>
+                      <span className="text-gray-700 font-semibold">{infographic.statusCounts.generated}</span>
+                      <span className="text-gray-500 font-medium">ready</span>
                     </div>
                   </div>
-                  <div className="text-xs text-gray-400 font-medium">
-                    {infographic.statusCounts.total} pages
+                  <div className="flex items-center space-x-1.5 bg-gray-100 px-3 py-1.5 rounded-full">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <span className="text-gray-700 font-bold">{infographic.statusCounts.total}</span>
+                    <span className="text-gray-500 font-medium">total</span>
                   </div>
                 </div>
               </div>
