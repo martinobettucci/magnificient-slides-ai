@@ -245,11 +245,6 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
                       <span className="text-gray-500 font-medium">ready</span>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-1.5 bg-gray-100 px-3 py-1.5 rounded-full">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                    <span className="text-gray-700 font-bold">{infographic.statusCounts.total}</span>
-                    <span className="text-gray-500 font-medium">total</span>
-                  </div>
                 </div>
               </div>
               
