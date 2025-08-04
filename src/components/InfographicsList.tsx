@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, FileText, Calendar, Edit, Trash2, Play, Sparkles, Layers, X } from 'lucide-react';
-import { infographicsService, Infographic } from '../lib/supabase';
+import { infographicsService, Infographic, InfographicPage, GenerationQueueItem } from '../lib/supabase';
 import { InfographicSlideshow } from './InfographicSlideshow';
+
+interface InfographicWithStatus extends Infographic {
+  pages: InfographicPage[];
+  queueItems: GenerationQueueItem[];
+  statusCounts: {
+    drafts: number;
+    queued: number;
+    generated: number;
+    total: number;
+  };
+}
 
 interface InfographicsListProps {
   onSelectInfographic: (infographic: Infographic) => void;
@@ -9,7 +20,7 @@ interface InfographicsListProps {
 }
 
 export function InfographicsList({ onSelectInfographic, onCreateNew }: InfographicsListProps) {
-  const [infographics, setInfographics] = useState<Infographic[]>([]);
+  const [infographics, setInfographics] = useState<InfographicWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSlideshow, setShowSlideshow] = useState<Infographic | null>(null);
@@ -21,8 +32,70 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
   const loadInfographics = async () => {
     try {
       setLoading(true);
-      const data = await infographicsService.getInfographics();
-      setInfographics(data);
+      const infographicsData = await infographicsService.getInfographics();
+      
+      // Load pages and queue status for each infographic
+      const infographicsWithStatus = await Promise.all(
+        infographicsData.map(async (infographic) => {
+          try {
+            const pages = await infographicsService.getPages(infographic.id);
+            const pageIds = pages.map(p => p.id);
+            const queueItems = pageIds.length > 0 
+              ? await infographicsService.getGenerationQueueStatus(pageIds)
+              : [];
+            
+            // Calculate status counts
+            const queueStatusMap = new Map<string, string>();
+            queueItems.forEach(item => {
+              if (!queueStatusMap.has(item.infographic_page_id)) {
+                queueStatusMap.set(item.infographic_page_id, item.status);
+              }
+            });
+            
+            let drafts = 0;
+            let queued = 0;
+            let generated = 0;
+            
+            pages.forEach(page => {
+              const status = queueStatusMap.get(page.id);
+              if (status === 'pending' || status === 'processing') {
+                queued++;
+              } else if (page.generated_html) {
+                generated++;
+              } else {
+                drafts++;
+              }
+            });
+            
+            return {
+              ...infographic,
+              pages,
+              queueItems,
+              statusCounts: {
+                drafts,
+                queued,
+                generated,
+                total: pages.length
+              }
+            };
+          } catch (err) {
+            console.error(`Error loading data for infographic ${infographic.id}:`, err);
+            return {
+              ...infographic,
+              pages: [],
+              queueItems: [],
+              statusCounts: {
+                drafts: 0,
+                queued: 0,
+                generated: 0,
+                total: 0
+              }
+            };
+          }
+        })
+      );
+      
+      setInfographics(infographicsWithStatus);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load infographics');
     } finally {
@@ -155,15 +228,15 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
               <div className="flex items-center space-x-3 text-xs">
                 <div className="flex items-center space-x-1">
                   <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                  <span className="text-gray-600">0 drafts</span>
+                  <span className="text-gray-600">{infographic.statusCounts.drafts} drafts</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                  <span className="text-gray-600">0 queued</span>
+                  <span className="text-gray-600">{infographic.statusCounts.queued} queued</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  <span className="text-gray-600">0 ready</span>
+                  <span className="text-gray-600">{infographic.statusCounts.generated} ready</span>
                 </div>
               </div>
             </div>
@@ -175,14 +248,25 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
               </span>
               
               {/* Enhanced Play Button - shown when all pages are generated */}
-              <div className="opacity-0 group-hover:opacity-100 transition-all">
+              <div className={`transition-all ${
+                infographic.statusCounts.total > 0 && infographic.statusCounts.generated === infographic.statusCounts.total
+                  ? 'opacity-100' 
+                  : 'opacity-0 group-hover:opacity-100'
+              }`}>
                 <button
                   onClick={(e) => handleShowSlideshow(infographic, e)}
-                  className="group/btn inline-flex items-center px-3 py-2 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 overflow-hidden"
+                  className={`group/btn inline-flex items-center px-3 py-2 text-white rounded-lg transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 overflow-hidden ${
+                    infographic.statusCounts.total > 0 && infographic.statusCounts.generated === infographic.statusCounts.total
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 ring-2 ring-green-200'
+                      : 'bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600'
+                  }`}
                 >
                   <Play className="w-4 h-4" />
                   <span className="max-w-0 group-hover/btn:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover/btn:ml-2">
-                    Slideshow
+                    {infographic.statusCounts.total > 0 && infographic.statusCounts.generated === infographic.statusCounts.total
+                      ? 'Ready to Present!'
+                      : 'Slideshow'
+                    }
                   </span>
                 </button>
               </div>
