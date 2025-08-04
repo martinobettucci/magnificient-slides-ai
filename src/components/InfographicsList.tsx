@@ -187,9 +187,11 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
                 </button>
               </div>
             </div>
+            </div>
           ))}
         </div>
       )}
+      </div>
       </div>
 
       {/* Slideshow Modal */}
@@ -199,7 +201,6 @@ export function InfographicsList({ onSelectInfographic, onCreateNew }: Infograph
           onClose={() => setShowSlideshow(null)}
         />
       )}
-      </div>
     </>
   );
 }
