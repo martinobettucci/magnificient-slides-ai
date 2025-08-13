@@ -4,6 +4,9 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')!;
 
+// Optional: maximum number of fix iterations, defaults to 5 if not set
+const MAX_HTML_FIX_ITER = Number(Deno.env.get('MAX_HTML_FIX_ITER') || 5);
+
 console.log('Queue worker starting with environment:', {
   hasSupabaseUrl: !!SUPABASE_URL,
   hasServiceRoleKey: !!SUPABASE_SERVICE_ROLE_KEY,
@@ -93,11 +96,11 @@ async function processQueueItem(queueItem: QueueItem): Promise<void> {
       
       if (historyError) {
         console.error('Failed to save to history:', historyError);
-        // Don't fail the generation, just log the error
+        // Do not fail the generation
       }
     }
 
-    // Generate HTML using OpenAI
+    // Generate HTML using OpenAI (main agent)
     const generatedHtml = await generateHtmlWithOpenAI({
       title: page.title,
       contentMarkdown: page.content_markdown,
@@ -108,11 +111,14 @@ async function processQueueItem(queueItem: QueueItem): Promise<void> {
       userComment: queueItem.user_comment,
     });
 
-    // Update page with generated HTML
+    // Validate and repair HTML using the secondary agent loop until zero errors
+    const finalHtml = await validateAndRepairHtmlLoop(generatedHtml);
+
+    // Update page with final HTML
     const { error: updatePageError } = await supabase
       .from('infographic_pages')
       .update({ 
-        generated_html: generatedHtml,
+        generated_html: finalHtml,
         last_generation_comment: queueItem.user_comment || ''
       })
       .eq('id', queueItem.infographic_page_id);
@@ -208,20 +214,20 @@ Requirements:
     messages: [
       {
         role: 'system',
-        content: `You are an expert infographic & data‑visualization designer.
+        content: `You are an expert infographic & data-visualization designer.
 
-Output MUST be valid JSON following the provided schema, where \`generatedHtml\` contains a full, production‑ready HTML5 document.
+Output MUST be valid JSON following the provided schema, where \`generatedHtml\` contains a full, production-ready HTML5 document.
 
 Design guidelines:
 • Visual polish: clean, spacious, modern typography.
 • Use Tailwind CSS via CDN (<script src="https://cdn.tailwindcss.com"></script>).
 • Include Lucide icons via CDN (<script src="https://cdn.jsdelivr.net/npm/lucide@latest"></script>) and initialize with \`lucide.createIcons()\`.
 • For mathematical equations (when applicable to context): Use MathJax via CDN (<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script> and <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>) to render beautiful LaTeX equations. Configure MathJax with proper delimiters and display options.
-• For animations (when applicable): Use Framer Motion via CDN (<script src="https://cdn.jsdelivr.net/npm/framer-motion@latest/dist/framer-motion.js"></script>) to create smooth, professional animations and transitions. Implement entrance animations, hover effects, and scroll-triggered animations where appropriate.
-• Bring data to life with interactive charts (prefer Chart.js via CDN) and dynamic timelines (e.g., vis‑timeline or lightweight custom JS).
-• Source high‑resolution royalty‑free hero/illustration images from Pexels URLs that match the page topic and add descriptive alt text.
+• For animations (when applicable): Use Framer Motion via CDN (<script src="https://cdn.jsdelivr.net/npm/framer-motion@latest/dist/framer-motion.js"></script>) to create smooth, professional animations and transitions where appropriate.
+• Bring data to life with interactive charts (prefer Chart.js via CDN) and dynamic timelines (e.g., vis-timeline or lightweight custom JS).
+• Source high-resolution royalty-free hero/illustration images from Pexels URLs that match the page topic and add descriptive alt text.
 • Employ semantic HTML5 sections (header, main, section, article, figure, footer) and ARIA labels for accessibility.
-• Ensure a mobile‑first, responsive layout using Flexbox or CSS Grid with sensible breakpoints.
+• Ensure a mobile-first, responsive layout using Flexbox or CSS Grid with sensible breakpoints.
 • Keep JavaScript scoped at the end of <body>; separate content, presentation, and behavior.
 • Do NOT include any explanatory text outside the JSON object.
 • Never break the JSON schema or return partial/empty content.
@@ -283,6 +289,176 @@ Design guidelines:
   }
 
   return parsedResponse.generatedHtml;
+}
+
+/* ----------------------
+   VALIDATION AND REPAIR
+   ---------------------- */
+
+type NuValidatorMessage = {
+  type: 'error' | 'info' | 'warning';
+  message: string;
+  extract?: string;
+  lastLine?: number;
+  lastColumn?: number;
+  subType?: string;
+};
+
+type ValidationResult = {
+  valid: boolean;
+  errors: NuValidatorMessage[];
+  allMessages: NuValidatorMessage[];
+};
+
+async function validateHtmlWithW3C(html: string): Promise<ValidationResult> {
+  try {
+    const res = await fetch('https://validator.w3.org/nu/?out=json', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'User-Agent': 'InfogrAIphics-Validator/1.0'
+      },
+      body: html,
+    });
+
+    if (!res.ok) {
+      const txt = await res.text();
+      console.error('W3C validator HTTP error:', res.status, txt);
+      // On validator failure, do not block the pipeline
+      return { valid: true, errors: [], allMessages: [] };
+    }
+
+    const payload = await res.json();
+    const messages: NuValidatorMessage[] = payload?.messages || [];
+    const errors = messages.filter((m: NuValidatorMessage) => m.type === 'error');
+    const valid = errors.length === 0;
+
+    return { valid, errors, allMessages: messages };
+  } catch (e) {
+    console.error('W3C validator fetch error:', e);
+    // On network error, treat as valid to avoid deadlocks
+    return { valid: true, errors: [], allMessages: [] };
+  }
+}
+
+function truncateForPrompt(messages: NuValidatorMessage[], maxChars = 6000): string {
+  const json = JSON.stringify(messages);
+  if (json.length <= maxChars) return json;
+  // Truncate conservatively at message boundaries
+  let acc: NuValidatorMessage[] = [];
+  let size = 0;
+  for (const m of messages) {
+    const piece = JSON.stringify(m);
+    if (size + piece.length > maxChars) break;
+    acc.push(m);
+    size += piece.length;
+  }
+  return JSON.stringify(acc);
+}
+
+async function repairHtmlWithOpenAI(html: string, errors: NuValidatorMessage[]): Promise<string> {
+  const errorBlob = truncateForPrompt(errors);
+
+  const requestBody = {
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content: [
+          'You are a senior HTML correctness agent.',
+          'Your job is to fix only the concrete validator errors provided.',
+          'ONLY FIX THE ERROR AND DO NOT CHANGE ANYTHING ELSE.',
+          'Preserve content, structure, order, classes, ids, inline scripts and styles.',
+          'Do not add or remove elements unless strictly necessary to resolve an error.',
+          'Do not introduce external resources',
+          'Do not reformat whitespace except where required by the fix.',
+          'Return valid JSON that matches the schema with the single field fixedHtml.',
+        ].join('\n')
+      },
+      {
+        role: 'user',
+        content: [
+          'Here is the current HTML to fix:',
+          '---HTML START---',
+          html,
+          '---HTML END---',
+          '',
+          'Here are the validator errors you must address exactly and only:',
+          errorBlob
+        ].join('\n')
+      }
+    ],
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'html_fix',
+        strict: true,
+        schema: {
+          type: 'object',
+          properties: {
+            fixedHtml: { type: 'string', description: 'The minimally fixed HTML string' }
+          },
+          required: ['fixedHtml'],
+          additionalProperties: false
+        }
+      }
+    }
+  };
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`OpenAI Fixer API error: ${response.status} - ${errorData}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices[0]?.message?.content || '';
+  if (!content) {
+    throw new Error('No response content from OpenAI fixer');
+  }
+
+  const parsed = JSON.parse(content);
+  if (!parsed.fixedHtml) {
+    throw new Error('Fixer did not return fixedHtml');
+  }
+  return parsed.fixedHtml;
+}
+
+async function validateAndRepairHtmlLoop(initialHtml: string): Promise<string> {
+  let html = initialHtml;
+  for (let i = 1; i <= MAX_HTML_FIX_ITER; i++) {
+    const validation = await validateHtmlWithW3C(html);
+    console.log(`Validation pass ${i}:`, {
+      valid: validation.valid,
+      errorCount: validation.errors.length
+    });
+
+    if (validation.valid) {
+      console.log('HTML passed validation with zero errors');
+      return html;
+    }
+
+    // Repair with the lightweight secondary agent
+    const before = html;
+    html = await repairHtmlWithOpenAI(html, validation.errors);
+
+    // Guard against non progress
+    if (html === before) {
+      console.warn('Fixer returned identical HTML, stopping early to prevent loop');
+      return html;
+    }
+  }
+
+  console.warn(`Reached max iterations (${MAX_HTML_FIX_ITER}) with remaining errors`);
+  return html;
 }
 
 async function processQueue(): Promise<void> {
@@ -355,7 +531,7 @@ Deno.serve(async (req: Request) => {
       const { action } = await req.json();
       
       if (action === 'start-worker') {
-        // Start the worker (this will run indefinitely)
+        // Start the worker continuously
         console.log('Starting continuous worker...');
         runWorker().catch(console.error);
         
