@@ -215,6 +215,5 @@ export function PagesSidebar({
           </div>
         )}
       </div>
-    </div>
   );
 }
