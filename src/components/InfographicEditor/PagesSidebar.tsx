@@ -112,23 +112,6 @@ export function PagesSidebar({
 
   return (
     <div className="w-80 bg-white/50 backdrop-blur-sm border-r border-gray-200 overflow-y-auto flex-shrink-0">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={onShowMarkdownImporter}
-              className="group text-xs text-gray-600 hover:text-gray-800 transition-all duration-300 px-2 py-1.5 border border-gray-300 rounded-lg font-medium overflow-hidden inline-flex items-center"
-            >
-              Import
-            </button>
-          </div>
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900">Pages ({pages.length})</h2>
-          <button
-            onClick={onShowMarkdownImporter}
-            className="group text-xs text-gray-600 hover:text-gray-800 transition-all duration-300 px-2 py-1.5 border border-gray-300 rounded-lg font-medium overflow-hidden inline-flex items-center"
-          >
-            Import
-          </button>
         </div>
         
         <div className="flex items-center justify-between mb-4">
