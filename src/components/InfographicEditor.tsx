@@ -190,7 +190,17 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       
       while (processed < maxAttempts && activeQueueCount > 0) {
         console.log(`Processing attempt ${processed + 1}...`);
-        await infographicsService.triggerQueueWorker();
+        try {
+          await infographicsService.triggerQueueWorker();
+        } catch (workerError) {
+          console.error(`Worker attempt ${processed + 1} failed:`, workerError);
+          // If it's a network error, show a user-friendly message and stop trying
+          if (workerError.message.includes('Network error') || workerError.message.includes('timeout')) {
+            setError(`Queue processing unavailable: ${workerError.message.split('\n')[0]}`);
+            break;
+          }
+          throw workerError;
+        }
         
         // Wait a bit for processing
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -207,7 +217,9 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       
     } catch (err) {
       console.error('Error triggering queue worker:', err);
-      setError(err instanceof Error ? err.message : 'Failed to trigger queue worker');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to trigger queue worker';
+      // Only show the first line of multi-line error messages for better UX
+      setError(errorMessage.split('\n')[0]);
     } finally {
       setTriggeringWorker(false);
     }
@@ -240,7 +252,12 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       console.error('Error stack:', err instanceof Error ? err.stack : undefined);
       
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate HTML';
-      setError(`HTML Generation Error: ${errorMessage}`);
+      // Show user-friendly error message
+      if (errorMessage.includes('Network error')) {
+        setError('HTML generation is currently unavailable due to network issues. Please try again later.');
+      } else {
+        setError(`HTML Generation Error: ${errorMessage.split('\n')[0]}`);
+      }
     }
   };
 

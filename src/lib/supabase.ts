@@ -306,6 +306,9 @@ export const infographicsService = {
       console.log('Triggering queue worker at:', apiUrl);
       console.log('Using Supabase URL:', supabaseUrl);
       
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -313,7 +316,10 @@ export const infographicsService = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ action: 'process-once' }),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
 
       console.log('Queue worker response:', {
         status: response.status,
@@ -348,8 +354,10 @@ export const infographicsService = {
       });
       
       // Provide more specific error messages
-      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        throw new Error(`Network error: Unable to reach Supabase Edge Function. Please check your VITE_SUPABASE_URL in .env file. Current URL: ${supabaseUrl}`);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout: The queue worker took too long to respond. Please try again.');
+      } else if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        throw new Error(`Network error: Unable to reach Supabase Edge Function. This might be due to:\n1. Edge function not deployed\n2. Network connectivity issues\n3. Incorrect VITE_SUPABASE_URL\n\nCurrent URL: ${supabaseUrl}\n\nThe application will continue to work, but automatic HTML generation may not function.`);
       }
       
       throw error;
