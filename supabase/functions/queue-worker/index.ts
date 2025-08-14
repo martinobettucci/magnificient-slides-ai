@@ -150,10 +150,10 @@ Output MUST be valid JSON following the provided schema, where \`generatedHtml\`
 Design guidelines:
 • Visual polish: clean, spacious, modern typography.
 • Use Tailwind CSS via CDN (<script src="https://cdn.tailwindcss.com"></script>).
-• Include Lucide icons via CDN (<script src="https://cdn.jsdelivr.net/npm/lucide@latest"></script>) and initialize with \`lucide.createIcons()\`.
+• Include Lucide icons via CDN (<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>) and initialize with \`lucide.createIcons()\`.
 • For mathematical equations (when applicable to context): Use MathJax via CDN (<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script> and <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>) to render beautiful LaTeX equations. Configure MathJax with proper delimiters and display options.
 • For animations (when applicable): Use Framer Motion via CDN (<script src="https://cdn.jsdelivr.net/npm/framer-motion@latest/dist/framer-motion.js"></script>) to create smooth, professional animations and transitions where appropriate.
-• Bring data to life with interactive charts with Chart.js via CDN(<script src="https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.umd.min.js"></script>) and dynamic graphs and timelines using vis-timeline via CDN (https://cdn.jsdelivr.net/npm/vis-timeline@latest/dist/vis-timeline-graph2d.min.js, https://cdn.jsdelivr.net/npm/vis-timeline@latest/styles/vis-timeline-graph2d.min.css).
+• Bring data to life with interactive charts with Chart.js via CDN(<script src="https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.umd.min.js"></script>) and timelines using vis-timeline via CDN (https://unpkg.com/moment@latest,https://unpkg.com/vis-data@latest/peer/umd/vis-data.min.js,https://unpkg.com/vis-timeline@latest/peer/umd/vis-timeline-graph2d.min.js,https://unpkg.com/vis-timeline/styles/vis-timeline-graph2d.min.css).
 • Source high-resolution royalty-free hero/illustration images from Pexels URLs that match the page topic and add descriptive alt text.
 • Employ semantic HTML5 sections (header, main, section, article, figure, footer) and ARIA labels for accessibility.
 • Ensure a mobile-first, responsive layout using Flexbox or CSS Grid with sensible breakpoints.
