@@ -296,15 +296,28 @@ export const infographicsService = {
   async triggerQueueWorker() {
     console.log('=== triggerQueueWorker Start ===');
     
-    // Validate environment variables
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Missing Supabase environment variables. Please check your .env file.');
+    // Validate environment variables before making the request
+    if (!supabaseUrl) {
+      console.warn('VITE_SUPABASE_URL is not configured. Queue worker cannot be triggered.');
+      return { success: false, message: 'Supabase URL not configured' };
+    }
+    
+    if (!supabaseAnonKey) {
+      console.warn('VITE_SUPABASE_ANON_KEY is not configured. Queue worker cannot be triggered.');
+      return { success: false, message: 'Supabase anonymous key not configured' };
+    }
+    
+    // Validate URL format
+    try {
+      new URL(supabaseUrl);
+    } catch (error) {
+      console.warn('Invalid VITE_SUPABASE_URL format:', supabaseUrl);
+      return { success: false, message: 'Invalid Supabase URL format' };
     }
     
     try {
       const apiUrl = `${supabaseUrl}/functions/v1/queue-worker`;
       console.log('Triggering queue worker at:', apiUrl);
-      console.log('Using Supabase URL:', supabaseUrl);
       
       // Fire and forget - don't wait for completion
       fetch(apiUrl, {
@@ -315,7 +328,7 @@ export const infographicsService = {
         },
         body: JSON.stringify({ action: 'process-once' }),
       }).catch(error => {
-        console.warn('Queue worker request failed (this is expected for background jobs):', error.message);
+        console.warn('Queue worker request failed (background job):', error.message);
       });
       
       console.log('Queue worker triggered successfully (background job)');
@@ -324,15 +337,8 @@ export const infographicsService = {
       return { success: true, message: 'Queue worker triggered as background job' };
     } catch (error) {
       console.error('=== triggerQueueWorker Error ===');
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-        supabaseUrl: supabaseUrl,
-        hasAnonKey: !!supabaseAnonKey
-      });
-      
-      throw error;
+      console.warn('Failed to trigger queue worker:', error.message);
+      return { success: false, message: 'Failed to trigger queue worker' };
     }
   },
 
