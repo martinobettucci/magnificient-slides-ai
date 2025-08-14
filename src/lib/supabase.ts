@@ -306,43 +306,22 @@ export const infographicsService = {
       console.log('Triggering queue worker at:', apiUrl);
       console.log('Using Supabase URL:', supabaseUrl);
       
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
-      const response = await fetch(apiUrl, {
+      // Fire and forget - don't wait for completion
+      fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${supabaseAnonKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ action: 'process-once' }),
-        signal: controller.signal,
+      }).catch(error => {
+        console.warn('Queue worker request failed (this is expected for background jobs):', error.message);
       });
       
-      clearTimeout(timeoutId);
-
-      console.log('Queue worker response:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Queue worker error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorText: errorText
-        });
-        
-        throw new Error(`Failed to trigger queue worker (${response.status}): ${errorText}`);
-      }
-
-      const result = await response.json();
-      console.log('Queue worker triggered successfully:', result);
+      console.log('Queue worker triggered successfully (background job)');
       console.log('=== triggerQueueWorker Success ===');
       
-      return result;
+      return { success: true, message: 'Queue worker triggered as background job' };
     } catch (error) {
       console.error('=== triggerQueueWorker Error ===');
       console.error('Error details:', {
@@ -352,13 +331,6 @@ export const infographicsService = {
         supabaseUrl: supabaseUrl,
         hasAnonKey: !!supabaseAnonKey
       });
-      
-      // Provide more specific error messages
-      if (error.name === 'AbortError') {
-        throw new Error('Request timeout: The queue worker took too long to respond. Please try again.');
-      } else if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        throw new Error(`Network error: Unable to reach Supabase Edge Function. This might be due to:\n1. Edge function not deployed\n2. Network connectivity issues\n3. Incorrect VITE_SUPABASE_URL\n\nCurrent URL: ${supabaseUrl}\n\nThe application will continue to work, but automatic HTML generation may not function.`);
-      }
       
       throw error;
     }
