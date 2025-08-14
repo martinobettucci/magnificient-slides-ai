@@ -328,6 +328,9 @@ async function validateJavaScriptAndLoading(html: string): Promise<{ errors: Run
         // Launch Puppeteer. These args are often needed in containerized environments.
         browser = await puppeteer.launch({
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            // FIX: Add an empty configFile path to prevent Puppeteer from searching
+            // the file system, which is restricted in Supabase Edge Functions.
+            configFile: '',
         });
         const page = await browser.newPage();
         const errors: RuntimeError[] = [];
