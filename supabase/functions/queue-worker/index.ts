@@ -1,14 +1,123 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.53.0';
+
 //import puppeteer from 'npm:puppeteer@22.12.1';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+const OPENAI_GENERATION_MODEL = Deno.env.get('OPENAI_GENERATION_MODEL') ?? 'gpt-4o-2024-08-06';
+const OPENAI_FIX_MODEL = Deno.env.get('OPENAI_FIX_MODEL') ?? 'gpt-4o-mini-2024-07-18';
 // Optional: maximum number of fix iterations, defaults to 5 if not set
 const MAX_HTML_FIX_ITER = Number(Deno.env.get('MAX_HTML_FIX_ITER') || 5);
+
+const extractResponseText = (payload: unknown): string | null => {
+  if (!payload || typeof payload !== 'object') return null;
+  const root = payload as Record<string, unknown>;
+  const outputText = root.output_text;
+  if (typeof outputText === 'string' && outputText.trim().length > 0) {
+    return outputText;
+  }
+  if (Array.isArray(outputText)) {
+    for (const item of outputText) {
+      if (typeof item === 'string' && item.trim().length > 0) {
+        return item;
+      }
+    }
+  }
+  const output = root.output;
+  if (Array.isArray(output)) {
+    for (const item of output) {
+      if (!item || typeof item !== 'object') continue;
+      const content = (item as Record<string, unknown>).content;
+      if (Array.isArray(content)) {
+        for (const chunk of content) {
+          if (!chunk || typeof chunk !== 'object') continue;
+          const text = (chunk as Record<string, unknown>).text;
+          if (typeof text === 'string' && text.trim().length > 0) {
+            return text;
+          }
+        }
+      }
+    }
+  }
+  const choices = root.choices;
+  if (Array.isArray(choices) && choices.length > 0) {
+    const first = choices[0];
+    if (first && typeof first === 'object') {
+      const message = (first as Record<string, unknown>).message;
+      if (message && typeof message === 'object') {
+        const legacyText = (message as Record<string, unknown>).content;
+        if (typeof legacyText === 'string' && legacyText.trim().length > 0) {
+          return legacyText;
+        }
+      }
+    }
+  }
+  return null;
+};
+
+const extractRefusal = (payload: unknown): Record<string, unknown> | null => {
+  if (!payload || typeof payload !== 'object') return null;
+  const root = payload as Record<string, unknown>;
+  const check = (entry: unknown): Record<string, unknown> | null => {
+    if (!entry || typeof entry !== 'object') return null;
+    const typed = entry as Record<string, unknown>;
+    if (typed.type === 'refusal' || typed.reason === 'refusal' || typeof (typed as any).refusal === 'string') {
+      return typed;
+    }
+    return null;
+  };
+  const output = root.output;
+  if (Array.isArray(output)) {
+    for (const item of output) {
+      const direct = check(item);
+      if (direct) return direct;
+      if (item && typeof item === 'object') {
+        const content = (item as Record<string, unknown>).content;
+        if (Array.isArray(content)) {
+          for (const part of content) {
+            const nested = check(part);
+            if (nested) return nested;
+          }
+        }
+      }
+    }
+  }
+  if ((root as any).refusal && typeof (root as any).refusal === 'object') {
+    return (root as any).refusal as Record<string, unknown>;
+  }
+  return null;
+};
+
+const humanizeHint = (hint: string) =>
+  hint
+    .split(/[_-]/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ') || hint;
+
+const GENERATION_HINT_PROMPTS: Record<string, string> = {
+  introduction: 'Craft a captivating introduction that clearly states the topic, why it matters, and the expected outcomes for the audience.',
+  agenda: 'Include a concise agenda/sommaire that lists the main sections or talking points of the presentation.',
+  section_break: 'Design a bold transition slide that introduces the next section with minimal text and strong visuals.',
+  dashboard: 'Create a data-rich dashboard with charts, key metrics, and calls-outs. Prioritize clarity, hierarchy, and legends.',
+  timeline: 'Use a timeline or roadmap layout to communicate milestones, phases, or a chronological story.',
+  process: 'Display a step-by-step process or workflow with numbered stages, icons, and short descriptions.',
+  comparison: 'Compare multiple options (e.g., plans, competitors) side-by-side using tables or cards and highlight key differences.',
+  persona: 'Present a user persona with demographics, goals, pain points, and relevant context in a visually engaging layout.',
+  swot: 'Structure the slide around a SWOT analysis (Strengths, Weaknesses, Opportunities, Threats) with balanced emphasis on each quadrant.',
+  budget: 'Show budget allocation, costs, or financial forecasts using tables/graphs and highlight the most important figures.',
+  technology: 'Illustrate the technical architecture, stack, or integrations with diagrams, icons, and annotations.',
+  quote: 'Feature a powerful quote or testimonial with strong typography and supporting imagery.',
+  faq: 'Provide a clear FAQ with the top questions and succinct answers, using an easy-to-scan layout.',
+  conclusion: 'Summarize the key takeaways and reinforce the core message, optionally listing next steps.',
+  call_to_action: 'End with a compelling call to action, highlighting what the audience should do next along with contact or follow-up details.',
+};
 console.log('Queue worker starting with environment:', {
   hasSupabaseUrl: !!SUPABASE_URL,
   hasServiceRoleKey: !!SUPABASE_SERVICE_ROLE_KEY,
-  hasOpenAIKey: !!OPENAI_API_KEY
+  hasOpenAIKey: !!OPENAI_API_KEY,
+  generationModel: OPENAI_GENERATION_MODEL,
+  fixModel: OPENAI_FIX_MODEL
 });
 // Create Supabase client with service role key for full access
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -17,6 +126,69 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization'
 };
+
+/** -------------------------
+ * OpenAI Responses API helpers (API-call ONLY fixes)
+ * ------------------------- */
+async function callOpenAIResponses(body: any) {
+  const res = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+
+  const raw = await res.text();
+
+  if (!res.ok) {
+    // Try to surface a helpful message
+    let msg = raw;
+    try {
+      const j = JSON.parse(raw);
+      msg = j?.error?.message || raw;
+    } catch {
+      // ignore
+    }
+    throw new Error(`OpenAI API error (${res.status}): ${msg}`);
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error('OpenAI API returned a non-JSON payload');
+  }
+}
+
+/**
+ * Try primary request (json_schema). If the model rejects json_schema,
+ * retry once with JSON mode (text.format = json_object) WITHOUT changing your prompts.
+ */
+function buildJsonModeFallbackBody(primaryBody: any) {
+  const fallback = { ...primaryBody, text: undefined };
+  // Use JSON mode instead of schema; keep the same input/prompt
+  fallback.text = { format: { type: 'json_object' } };
+  return fallback;
+}
+
+async function callOpenAIWithFallback(primaryBody: any) {
+  try {
+    return await callOpenAIResponses(primaryBody);
+  } catch (e: any) {
+    const msg = String(e?.message || '');
+    const looksLikeSchemaUnsupported =
+      /json_schema/i.test(msg) ||
+      /schema/i.test(msg) && /(unsupported|not supported|only available)/i.test(msg);
+
+    if (looksLikeSchemaUnsupported) {
+      const fb = buildJsonModeFallbackBody(primaryBody);
+      return await callOpenAIResponses(fb);
+    }
+    throw e;
+  }
+}
+
 // UPDATED: Added options parameter to pass down validation flags
 async function processQueueItem(queueItem, options) {
   console.log(`Processing queue item ${queueItem.id} for page ${queueItem.infographic_page_id}`);
@@ -50,6 +222,7 @@ async function processQueueItem(queueItem, options) {
       }
     }
     // Generate HTML using OpenAI (main agent)
+    console.log('Generation hints applied:', Array.isArray(page.generation_hints) ? page.generation_hints : []);
     const generatedHtml = await generateHtmlWithOpenAI({
       title: page.title,
       contentMarkdown: page.content_markdown,
@@ -57,7 +230,8 @@ async function processQueueItem(queueItem, options) {
       projectDescription: infographic.description,
       previousHtml: page.generated_html,
       previousComment: page.last_generation_comment,
-      userComment: queueItem.user_comment
+      userComment: queueItem.user_comment,
+      generationHints: Array.isArray(page.generation_hints) ? page.generation_hints : []
     });
     // UPDATED: Determine which validation steps to run.
     // Flags from a direct POST request take precedence over flags on the queue item.
@@ -93,8 +267,26 @@ async function processQueueItem(queueItem, options) {
     }).eq('id', queueItem.id);
   }
 }
-async function generateHtmlWithOpenAI(params) {
-  const { title, contentMarkdown, styleDescription, projectDescription, previousHtml, previousComment, userComment } = params;
+async function generateHtmlWithOpenAI(params: {
+  title: string;
+  contentMarkdown: string;
+  styleDescription: string;
+  projectDescription: string;
+  previousHtml?: string;
+  previousComment?: string;
+  userComment?: string;
+  generationHints?: string[];
+}) {
+  const {
+    title,
+    contentMarkdown,
+    styleDescription,
+    projectDescription,
+    previousHtml,
+    previousComment,
+    userComment,
+    generationHints = [],
+  } = params;
   let prompt = `
 You are an expert infographic designer. Create a beautiful, modern HTML page for an infographic slide.
 
@@ -111,6 +303,26 @@ Content to Transform:
 {{{
 ${contentMarkdown}
 }}}`;
+
+  const activeHints = (generationHints || []).filter((hint) => typeof hint === 'string' && hint.trim().length > 0);
+  if (activeHints.length > 0) {
+    const hintNarrative = activeHints
+      .map((hint) => {
+        const normalized = hint.trim().toLowerCase();
+        const mapped = GENERATION_HINT_PROMPTS[normalized];
+        return mapped
+          ? `- ${humanizeHint(normalized)}: ${mapped}`
+          : `- ${humanizeHint(normalized)}: Emphasize this theme prominently in the layout and narrative.`;
+      })
+      .join('\n');
+
+    prompt += `
+
+Generation Hints:
+${hintNarrative}
+
+Incorporate every hint above. Blend them gracefully in one cohesive slide without fragmenting the content.`;
+  }
   // If this is a regeneration with user feedback, include context
   if (previousHtml && userComment) {
     prompt += `
@@ -139,11 +351,14 @@ Requirements:
 10. The page should be self-contained (no external dependencies)${userComment ? `
 11. IMPORTANT: Address the user's specific feedback: ${userComment}` : ''}`;
   const requestBody = {
-    model: 'o4-mini',
-    messages: [
+    model: OPENAI_GENERATION_MODEL,
+    input: [
       {
         role: 'system',
-        content: `You are an expert infographic & data-visualization designer.
+        content: [
+          {
+            type: 'input_text',
+            text: `You are an expert infographic & data-visualization designer.
 
 Output MUST be valid JSON following the provided schema, where \`generatedHtml\` contains a full, production-ready HTML5 document.
 
@@ -159,20 +374,26 @@ Design guidelines:
 • Ensure a mobile-first, responsive layout using Flexbox or CSS Grid with sensible breakpoints.
 • Keep JavaScript scoped at the end of <body>; separate content, presentation, and behavior.
 • Do NOT include any explanatory text outside the JSON object.
-• Never break the JSON schema or return partial/empty content.
 • Never badd an external link to a ressource, under any circonstance: the page must be self contained.
 • Make sure the page renders correctly when opened directly in a browser.
-• Make sure the page always ends with a footer mentionning "Presentation made by InfogrAIphics by P2Enjoy SAS - Copyright 2025"`
+• Make sure the page always ends with a footer mentionning "Presentation made by InfogrAIphics by P2Enjoy SAS - Copyright 2025"`,
+          },
+        ],
       },
       {
         role: 'user',
-        content: prompt
-      }
+        content: [
+          {
+            type: 'input_text',
+            text: prompt,
+          },
+        ],
+      },
     ],
-    max_completion_tokens: 100000,
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
+    max_output_tokens: 100000,
+    text: {
+      format: {
+        type: 'json_schema',
         name: 'infographic_html',
         strict: true,
         schema: {
@@ -191,20 +412,19 @@ Design guidelines:
       }
     }
   };
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(requestBody)
-  });
-  if (!response.ok) {
-    const errorData = await response.text();
-    throw new Error(`OpenAI API error: ${response.status} - ${errorData}`);
+
+  // API call with graceful fallback if the model rejects json_schema
+  const data = await callOpenAIWithFallback(requestBody);
+
+  if (data?.status === 'incomplete') {
+    const reason = data?.incomplete_details?.reason ?? 'unknown';
+    throw new Error(`OpenAI response incomplete: ${reason}`);
   }
-  const data = await response.json();
-  const responseContent = data.choices[0]?.message?.content || '';
+  const refusal = extractRefusal(data);
+  if (refusal) {
+    throw new Error(`OpenAI refused the request: ${JSON.stringify(refusal)}`);
+  }
+  const responseContent = extractResponseText(data) ?? '';
   if (!responseContent) {
     throw new Error('No response content from OpenAI');
   }
@@ -308,7 +528,7 @@ async function validateJavaScriptAndLoading(html) {
 function truncateForPrompt(messages, maxChars = 6000) {
   const json = JSON.stringify(messages);
   if (json.length <= maxChars) return json;
-  let acc = [];
+  const acc = [];
   let size = 0;
   for (const m of messages){
     const piece = JSON.stringify(m);
@@ -321,40 +541,51 @@ function truncateForPrompt(messages, maxChars = 6000) {
 async function repairHtmlWithOpenAI(html, errors) {
   const errorBlob = truncateForPrompt(errors);
   const requestBody = {
-    model: 'gpt-4.1-mini',
-    messages: [
+    model: OPENAI_FIX_MODEL,
+    input: [
       {
         role: 'system',
         content: [
-          'You are a senior HTML correctness agent.',
-          'Your job is to fix only the concrete validator errors provided.',
-          'The errors can be HTML syntax errors from a W3C validator, JavaScript runtime errors, or resource loading errors (e.g., 404s).',
-          'ONLY FIX THE ERROR AND DO NOT CHANGE ANYTHING ELSE.',
-          'If you see a JavaScript error, analyze the script and fix the bug.',
-          'If you see a loading error (e.g. 404), correct the resource URL. If it\'s an image from a service like Pexels, find a valid replacement URL on the same topic.',
-          'Preserve content, structure, order, classes, ids, inline scripts and styles.',
-          'Do not add or remove elements unless strictly necessary to resolve an error.',
-          'Do not introduce external resources',
-          'Do not reformat whitespace except where required by the fix.',
-          'Return valid JSON that matches the schema with the single field fixedHtml.'
-        ].join('\n')
+          {
+            type: 'input_text',
+            text: [
+              'You are a senior HTML correctness agent.',
+              'Your job is to fix only the concrete validator errors provided.',
+              'The errors can be HTML syntax errors from a W3C validator, JavaScript runtime errors, or resource loading errors (e.g., 404s).',
+              'ONLY FIX THE ERROR AND DO NOT CHANGE ANYTHING ELSE.',
+              'If you see a JavaScript error, analyze the script and fix the bug.',
+              'If you see a loading error (e.g. 404), correct the resource URL. If it\'s an image from a service like Pexels, find a valid replacement URL on the same topic.',
+              'Preserve content, structure, order, classes, ids, inline scripts and styles.',
+              'Do not add or remove elements unless strictly necessary to resolve an error.',
+              'Do not introduce external resources',
+              'Do not reformat whitespace except where required by the fix.',
+              'Return valid JSON that matches the schema with the single field fixedHtml.'
+            ].join('\n'),
+          },
+        ],
       },
       {
         role: 'user',
         content: [
-          'Here is the current HTML to fix:',
-          '---HTML START---',
-          html,
-          '---HTML END---',
-          '',
-          'Here are the validator errors you must address exactly and only:',
-          errorBlob
-        ].join('\n')
+          {
+            type: 'input_text',
+            text: [
+              'Here is the current HTML to fix:',
+              '---HTML START---',
+              html,
+              '---HTML END---',
+              '',
+              'Here are the validator errors you must address exactly and only:',
+              errorBlob
+            ].join('\n'),
+          },
+        ],
       }
     ],
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
+    max_output_tokens: 4000,
+    text: {
+      format: {
+        type: 'json_schema',
         name: 'html_fix',
         strict: true,
         schema: {
@@ -373,20 +604,19 @@ async function repairHtmlWithOpenAI(html, errors) {
       }
     }
   };
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(requestBody)
-  });
-  if (!response.ok) {
-    const errorData = await response.text();
-    throw new Error(`OpenAI Fixer API error: ${response.status} - ${errorData}`);
+
+  // API call with graceful fallback if the model rejects json_schema
+  const data = await callOpenAIWithFallback(requestBody);
+
+  if (data?.status === 'incomplete') {
+    const reason = data?.incomplete_details?.reason ?? 'unknown';
+    throw new Error(`OpenAI fixer response incomplete: ${reason}`);
   }
-  const data = await response.json();
-  const content = data.choices[0]?.message?.content || '';
+  const refusal = extractRefusal(data);
+  if (refusal) {
+    throw new Error(`OpenAI fixer refused the request: ${JSON.stringify(refusal)}`);
+  }
+  const content = extractResponseText(data) ?? '';
   if (!content) {
     throw new Error('No response content from OpenAI fixer');
   }

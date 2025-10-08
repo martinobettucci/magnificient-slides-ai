@@ -76,9 +76,14 @@ export function InfographicForm({ infographic, onSave, onCancel }: InfographicFo
       console.log('Style guidelines generated successfully:', result);
       
       // Update the form with the generated style guidelines
-      setFormData(prev => ({ 
-        ...prev, 
-        style_description: result.styleGuidelines 
+      const compiledGuidelines =
+        (typeof result.combinedStyleDescription === 'string' && result.combinedStyleDescription.trim().length > 0)
+          ? result.combinedStyleDescription.trim()
+          : result.styleGuidelines;
+
+      setFormData(prev => ({
+        ...prev,
+        style_description: compiledGuidelines,
       }));
 
     } catch (err) {

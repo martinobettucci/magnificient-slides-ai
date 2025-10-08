@@ -1,4 +1,140 @@
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+// Use a snapshot that supports json_schema strict mode
+const OPENAI_ANALYSIS_MODEL = Deno.env.get('OPENAI_ANALYSIS_MODEL') ?? 'gpt-4o-2024-08-06';
+
+const extractResponseText = (payload) => {
+  if (!payload || typeof payload !== 'object') return null;
+  const root = payload;
+
+  // 1) Direct convenience field from Responses API
+  if (typeof root.output_text === 'string' && root.output_text.trim()) {
+    return root.output_text;
+  }
+  if (Array.isArray(root.output_text)) {
+    for (const item of root.output_text) {
+      if (typeof item === 'string' && item.trim()) return item;
+    }
+  }
+
+  // 2) Canonical content layout
+  if (Array.isArray(root.output)) {
+    for (const msg of root.output) {
+      if (!msg || typeof msg !== 'object') continue;
+      const content = msg.content;
+      if (Array.isArray(content)) {
+        for (const chunk of content) {
+          if (!chunk || typeof chunk !== 'object') continue;
+          // In Responses API, the textual chunk appears as { type: 'output_text', text: '...' }
+          if (typeof chunk.text === 'string' && chunk.text.trim()) {
+            return chunk.text;
+          }
+        }
+      }
+    }
+  }
+
+  // 3) Legacy Chat Completions compatibility
+  if (Array.isArray(root.choices) && root.choices.length > 0) {
+    const first = root.choices[0];
+    if (first && typeof first === 'object' && first.message && typeof first.message === 'object') {
+      const legacyText = first.message.content;
+      if (typeof legacyText === 'string' && legacyText.trim()) {
+        return legacyText;
+      }
+    }
+  }
+
+  return null;
+};
+
+const extractRefusal = (payload) => {
+  if (!payload || typeof payload !== 'object') return null;
+  const root = payload;
+
+  const isRefusal = (entry) => {
+    if (!entry || typeof entry !== 'object') return null;
+    if (entry.type === 'refusal') return entry;
+    if (entry.reason === 'refusal') return entry;
+    if (typeof entry.refusal === 'string' && entry.refusal.trim()) return entry;
+    return null;
+  };
+
+  if (Array.isArray(root.output)) {
+    for (const msg of root.output) {
+      const direct = isRefusal(msg);
+      if (direct) return direct;
+      if (msg && typeof msg === 'object' && Array.isArray(msg.content)) {
+        for (const part of msg.content) {
+          const nested = isRefusal(part);
+          if (nested) return nested;
+        }
+      }
+    }
+  }
+  if (root.refusal && typeof root.refusal === 'object') return root.refusal;
+  return null;
+};
+
+// Build a flattened recommendations list from the structured response fields
+const buildRecommendations = (p) => {
+  const items = [];
+
+  // 1) Style guidelines free text
+  if (typeof p.styleGuidelines === 'string' && p.styleGuidelines.trim()) {
+    // Split on new lines to capture bullet-like content while preserving order
+    const lines = p.styleGuidelines.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    // If the model wrote one big paragraph, keep it as a single item
+    if (lines.length > 1) {
+      items.push(...lines);
+    } else {
+      items.push(p.styleGuidelines.trim());
+    }
+  }
+
+  // 2) Color palette normalization
+  if (p.colorPalette && typeof p.colorPalette === 'object') {
+    const cp = p.colorPalette;
+    const colorKeys = ['primary','secondary','accent','neutral','background'];
+    for (const k of colorKeys) {
+      if (typeof cp[k] === 'string' && cp[k].trim()) {
+        items.push(`Color ${k}: ${cp[k].trim()}`);
+      }
+    }
+  }
+
+  // 3) Typography normalization
+  if (p.typography && typeof p.typography === 'object') {
+    const ty = p.typography;
+    if (typeof ty.headingFont === 'string' && ty.headingFont.trim()) {
+      items.push(`Heading font: ${ty.headingFont.trim()}`);
+    }
+    if (typeof ty.bodyFont === 'string' && ty.bodyFont.trim()) {
+      items.push(`Body font: ${ty.bodyFont.trim()}`);
+    }
+    if (ty.fontSizes && typeof ty.fontSizes === 'object') {
+      const fs = ty.fontSizes;
+      if (typeof fs.h1 === 'string' && fs.h1.trim()) items.push(`Font size H1: ${fs.h1.trim()}`);
+      if (typeof fs.h2 === 'string' && fs.h2.trim()) items.push(`Font size H2: ${fs.h2.trim()}`);
+      if (typeof fs.h3 === 'string' && fs.h3.trim()) items.push(`Font size H3: ${fs.h3.trim()}`);
+      if (typeof fs.body === 'string' && fs.body.trim()) items.push(`Font size body: ${fs.body.trim()}`);
+    }
+  }
+
+  // Deduplicate while preserving order
+  const seen = new Set();
+  const deduped = [];
+  for (const it of items) {
+    const key = it.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(it);
+  }
+
+  return {
+    items: deduped,
+    text: deduped.join('\n')
+  };
+};
 
 interface SuggestStyleRequest {
   projectName: string;
@@ -17,58 +153,32 @@ Deno.serve(async (req: Request) => {
     console.log('=== Style Suggestions Edge Function Start ===');
     console.log('Request method:', req.method);
     console.log('Request headers:', Object.fromEntries(req.headers.entries()));
-    
-    // Handle CORS preflight requests
+
     if (req.method === 'OPTIONS') {
-      console.log('Handling CORS preflight request');
-      return new Response(null, {
-        status: 200,
-        headers: corsHeaders,
-      });
+      return new Response(null, { status: 200, headers: corsHeaders });
     }
 
     if (req.method !== 'POST') {
-      console.log('Invalid method:', req.method);
-      return new Response(
-        JSON.stringify({ error: 'Method not allowed' }),
-        {
-          status: 405,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+        status: 405,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     if (!OPENAI_API_KEY) {
       console.error('OpenAI API key not configured');
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      return new Response(JSON.stringify({ error: 'OpenAI API key not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    console.log('Parsing request body...');
     const { projectName, projectDescription, existingStyleDescription }: SuggestStyleRequest = await req.json();
-    console.log('Request data:', {
-      projectName: projectName?.substring(0, 50) + '...',
-      projectDescription: projectDescription?.substring(0, 100) + '...',
-      hasExistingStyle: !!existingStyleDescription,
-      existingStyleLength: existingStyleDescription?.length || 0
-    });
 
     if (!projectName || !projectDescription) {
-      console.error('Missing required fields:', {
-        hasProjectName: !!projectName,
-        hasProjectDescription: !!projectDescription
-      });
       return new Response(
         JSON.stringify({ error: 'Missing required fields: projectName and projectDescription are required' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -84,53 +194,52 @@ ${existingStyleDescription}
 
 Please provide improved and more detailed style guidelines that will help AI generate beautiful, consistent infographic pages. Focus on:
 
-1. **Color Palette**: Suggest specific colors (hex codes) for primary, secondary, accent, and neutral colors
-2. **Typography**: Recommend font families, sizes, weights, and hierarchy
-3. **Layout & Spacing**: Define grid systems, margins, padding, and spacing rules
-4. **Visual Elements**: Describe icons, charts, graphics, and visual treatment styles
-5. **Brand Personality**: Define the visual tone and mood
-6. **Responsive Design**: Guidelines for different screen sizes
-7. **Accessibility**: Color contrast and readability considerations
+1. Color Palette, provide hex codes for primary, secondary, accent, neutral, and background
+2. Typography, recommend font families, sizes, weights, and hierarchy
+3. Layout and Spacing, define grid systems, margins, padding, and spacing rules
+4. Visual Elements, describe icons, charts, graphics, and visual treatments
+5. Brand Personality, define the visual tone and mood
+6. Responsive Design, guidelines for different screen sizes
+7. Accessibility, color contrast and readability considerations
 
-Provide actionable, specific guidelines that an AI can follow to create consistent, professional infographic designs.`
+Provide actionable, specific guidelines that an AI can follow.`
       : `You are an expert UI/UX designer specializing in infographic design. Create comprehensive style guidelines for this project.
 
 Project Details:
 - Name: ${projectName}
 - Description: ${projectDescription}
 
-Please create detailed style guidelines that will help AI generate beautiful, consistent infographic pages. Include:
+Create detailed style guidelines that help AI generate beautiful, consistent infographic pages. Include:
 
-1. **Color Palette**: Suggest specific colors (hex codes) for primary, secondary, accent, and neutral colors based on the project theme
-2. **Typography**: Recommend font families, sizes, weights, and hierarchy that match the project's purpose
-3. **Layout & Spacing**: Define grid systems, margins, padding, and spacing rules
-4. **Visual Elements**: Describe appropriate icons, charts, graphics, and visual treatment styles
-5. **Brand Personality**: Define the visual tone and mood that fits the project
-6. **Responsive Design**: Guidelines for different screen sizes
-7. **Accessibility**: Color contrast and readability considerations
+1. Color Palette, hex codes for primary, secondary, accent, neutral, background based on the theme
+2. Typography, font families, sizes, weights, and hierarchy
+3. Layout and Spacing, grid systems, margins, padding, spacing rules
+4. Visual Elements, icons, charts, graphics, visual treatment styles
+5. Brand Personality, visual tone and mood
+6. Responsive Design, guidelines by breakpoint
+7. Accessibility, color contrast and readability`;
 
-Make the guidelines specific and actionable so an AI can follow them to create consistent, professional infographic designs that match the project's goals and audience.`;
-
-    console.log('Making OpenAI API request with model: o3');
-    console.log('Prompt length:', prompt.length);
-    
     const requestBody = {
-      model: 'gpt-4o',
-      messages: [
+      model: OPENAI_ANALYSIS_MODEL,
+      input: [
         {
           role: 'system',
-          content: 'You are an expert UI/UX designer who creates comprehensive, actionable style guidelines for infographic projects. You MUST always provide specific, detailed recommendations. Never return empty content or refuse to generate guidelines. Always create complete style guidelines that AI systems can follow to create consistent, beautiful designs.'
+          content: [
+            {
+              type: 'input_text',
+              text: 'You are an expert UI/UX designer who creates comprehensive, actionable style guidelines for infographic projects. Always provide specific, detailed recommendations.'
+            }
+          ]
         },
         {
           role: 'user',
-          content: prompt
+          content: [{ type: 'input_text', text: prompt }]
         }
       ],
-      max_completion_tokens: 2000,
-      temperature: 0.7,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
+      max_output_tokens: 2000,
+      text: {
+        format: {
+          type: 'json_schema',
           name: 'style_guidelines',
           strict: true,
           schema: {
@@ -179,15 +288,8 @@ Make the guidelines specific and actionable so an AI can follow them to create c
         }
       }
     };
-    
-    console.log('OpenAI request body structure:', {
-      model: requestBody.model,
-      messagesCount: requestBody.messages.length,
-      maxTokens: requestBody.max_completion_tokens,
-      hasResponseFormat: !!requestBody.response_format
-    });
-    
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
@@ -196,112 +298,78 @@ Make the guidelines specific and actionable so an AI can follow them to create c
       body: JSON.stringify(requestBody),
     });
 
-    console.log('OpenAI API response status:', response.status);
-    console.log('OpenAI API response headers:', Object.fromEntries(response.headers.entries()));
-    
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('OpenAI API error details:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorData: errorData
-      });
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: `OpenAI API error: ${response.status}`,
           details: `OpenAI API returned ${response.status} (${response.statusText}): ${errorData}`
         }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Parsing OpenAI response...');
     const data = await response.json();
-    console.log('OpenAI response structure:', {
-      hasChoices: !!data.choices,
-      choicesLength: data.choices?.length || 0,
-      hasUsage: !!data.usage,
-      usage: data.usage
-    });
-    
-    const responseContent = data.choices[0]?.message?.content || '';
-    console.log('Response content length:', responseContent.length);
-    console.log('Response content preview:', responseContent.substring(0, 200) + '...');
-    
+
+    if (data?.status === 'incomplete') {
+      const reason = data?.incomplete_details?.reason ?? 'unknown';
+      return new Response(
+        JSON.stringify({ error: 'OpenAI response incomplete', details: reason }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const refusal = extractRefusal(data);
+    if (refusal) {
+      return new Response(
+        JSON.stringify({ error: 'OpenAI refused to generate style guidelines', details: refusal }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const responseContent = extractResponseText(data) ?? '';
     let parsedResponse;
     try {
-      console.log('Attempting to parse structured JSON response...');
       parsedResponse = JSON.parse(responseContent);
-      console.log('Parsed response keys:', Object.keys(parsedResponse));
-      console.log('Style guidelines length:', parsedResponse.styleGuidelines?.length || 0);
-      console.log('Color palette keys:', Object.keys(parsedResponse.colorPalette || {}));
-      console.log('Typography keys:', Object.keys(parsedResponse.typography || {}));
     } catch (parseError) {
-      console.error('Failed to parse structured response:', {
-        error: parseError.message,
-        responseContent: responseContent.substring(0, 500)
-      });
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: 'Failed to parse AI response',
           details: `JSON parsing failed: ${parseError.message}`
         }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!parsedResponse.styleGuidelines) {
-      console.error('No style guidelines generated:', {
-        responseContent: responseContent,
-        parsedResponse: parsedResponse
-      });
+    if (!parsedResponse || !parsedResponse.styleGuidelines) {
       return new Response(
         JSON.stringify({ error: 'No style guidelines generated by AI' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Successfully generated style guidelines:', {
-      guidelinesLength: parsedResponse.styleGuidelines.length,
-      hasColorPalette: !!parsedResponse.colorPalette,
-      hasTypography: !!parsedResponse.typography
+    // Build flattened recommendations
+    const { items, text } = buildRecommendations(parsedResponse);
+
+    const finalPayload = {
+      ...parsedResponse,
+      recommendations: items,            // Array<string>
+      recommendationsText: text          // Single concatenated string
+    };
+
+    return new Response(JSON.stringify(finalPayload), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-    console.log('=== Style Suggestions Edge Function Success ===');
-    
-    return new Response(
-      JSON.stringify(parsedResponse),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
 
   } catch (error) {
-    console.error('=== Style Suggestions Edge Function Error ===');
-    console.error('Error in suggest-style-guidelines function:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    });
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: 'Internal server error',
         details: `${error.name}: ${error.message}`,
         stack: error.stack
       }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

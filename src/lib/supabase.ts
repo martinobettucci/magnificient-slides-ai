@@ -90,6 +90,67 @@ const normalizePage = (page: any): InfographicPage => ({
   generation_hints: sanitizeHints(page?.generation_hints),
 } as InfographicPage);
 
+const buildCombinedStyleDescription = (result: {
+  styleGuidelines?: string;
+  colorPalette?: Record<string, string>;
+  typography?: {
+    headingFont?: string;
+    bodyFont?: string;
+    fontSizes?: Record<string, string>;
+  };
+  recommendationsText?: string;
+  recommendations?: string[];
+}) => {
+  const sections: string[] = [];
+
+  if (typeof result.styleGuidelines === 'string' && result.styleGuidelines.trim()) {
+    sections.push(result.styleGuidelines.trim());
+  }
+
+  if (result.colorPalette && typeof result.colorPalette === 'object') {
+    const entries = Object.entries(result.colorPalette)
+      .filter(([, value]) => typeof value === 'string' && value.trim().length > 0);
+    if (entries.length > 0) {
+      const paletteLines = entries.map(([key, value]) => `- ${key}: ${value.trim()}`);
+      sections.push(['Color Palette:', ...paletteLines].join('\n'));
+    }
+  }
+
+  if (result.typography && typeof result.typography === 'object') {
+    const typographyLines: string[] = [];
+    const { headingFont, bodyFont, fontSizes } = result.typography;
+    if (typeof headingFont === 'string' && headingFont.trim()) {
+      typographyLines.push(`- Heading font: ${headingFont.trim()}`);
+    }
+    if (typeof bodyFont === 'string' && bodyFont.trim()) {
+      typographyLines.push(`- Body font: ${bodyFont.trim()}`);
+    }
+    if (fontSizes && typeof fontSizes === 'object') {
+      for (const [key, value] of Object.entries(fontSizes)) {
+        if (typeof value === 'string' && value.trim()) {
+          typographyLines.push(`- ${key.toUpperCase()} size: ${value.trim()}`);
+        }
+      }
+    }
+    if (typographyLines.length > 0) {
+      sections.push(['Typography:', ...typographyLines].join('\n'));
+    }
+  }
+
+  if (Array.isArray(result.recommendations) && result.recommendations.length > 0) {
+    const recLines = result.recommendations
+      .map((item) => typeof item === 'string' ? item.trim() : '')
+      .filter(Boolean);
+    if (recLines.length > 0) {
+      sections.push(['Actionable Guidelines:', ...recLines.map((line) => `- ${line}`)].join('\n'));
+    }
+  } else if (typeof result.recommendationsText === 'string' && result.recommendationsText.trim()) {
+    sections.push(result.recommendationsText.trim());
+  }
+
+  return sections.join('\n\n').trim();
+};
+
 export const infographicsService = {
   // Infographics
   async getInfographics() {
@@ -503,9 +564,14 @@ export const infographicsService = {
       if (!result.styleGuidelines) {
         throw new Error('No style guidelines received from edge function');
       }
+
+      const compiledDescription = buildCombinedStyleDescription(result);
       
       console.log('=== generateStyleGuidelines Success ===');
-      return result;
+      return {
+        ...result,
+        combinedStyleDescription: compiledDescription,
+      };
     } catch (error) {
       console.error('=== generateStyleGuidelines Error ===');
       console.error('Error details:', {
