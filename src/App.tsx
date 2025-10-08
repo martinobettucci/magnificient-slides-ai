@@ -101,7 +101,7 @@ function App() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 80px)' }}>
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         {appState.view === 'list' && (
           <InfographicsList
             onSelectInfographic={handleSelectInfographic}

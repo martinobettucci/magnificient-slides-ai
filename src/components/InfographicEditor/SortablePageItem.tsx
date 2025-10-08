@@ -3,6 +3,7 @@ import { Trash2 } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { InfographicPage } from '../../lib/supabase';
+import { sanitizeHints, generationHintLabel } from '../../lib/generationHints';
 
 interface SortablePageItemProps {
   page: InfographicPage;
@@ -42,6 +43,7 @@ export function SortablePageItem({
     transform: CSS.Transform.toString(transform),
     transition,
   };
+  const generationHints = sanitizeHints(page.generation_hints);
 
   return (
     <div
@@ -91,6 +93,24 @@ export function SortablePageItem({
                 </button>
             )}
           </div>
+          
+          {generationHints.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {generationHints.slice(0, 3).map((hint) => (
+                <span
+                  key={`${page.id}-hint-${hint}`}
+                  className="px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-semibold border border-indigo-100 shadow-sm"
+                >
+                  {generationHintLabel(hint)}
+                </span>
+              ))}
+              {generationHints.length > 3 && (
+                <span className="px-2 py-1 rounded-full bg-indigo-100/70 text-indigo-800 text-[11px] font-semibold border border-indigo-200">
+                  +{generationHints.length - 3}
+                </span>
+              )}
+            </div>
+          )}
           
           {page.content_markdown && (
             <p className="text-xs text-gray-600 mb-3 line-clamp-2 leading-relaxed">

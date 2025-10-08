@@ -1,4 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
+import {
+  sanitizeHints,
+  GenerationHintSuggestion,
+  GenerationHintValue,
+  GENERATION_HINT_CONFIDENCE,
+} from './generationHints';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -54,6 +60,7 @@ export interface InfographicPage {
   page_order: number;
   created_at: string;
   updated_at: string;
+  generation_hints: GenerationHintValue[];
 }
 
 export interface InfographicPageHistory {
@@ -78,6 +85,11 @@ export interface GenerationQueueItem {
 }
 
 // Database functions
+const normalizePage = (page: any): InfographicPage => ({
+  ...page,
+  generation_hints: sanitizeHints(page?.generation_hints),
+} as InfographicPage);
+
 export const infographicsService = {
   // Infographics
   async getInfographics() {
@@ -142,7 +154,7 @@ export const infographicsService = {
       .order('page_order');
     
     if (error) throw error;
-    return data as InfographicPage[];
+    return (data || []).map((page) => normalizePage(page));
   },
 
   async getPage(id: string) {
@@ -153,30 +165,38 @@ export const infographicsService = {
       .single();
     
     if (error) throw error;
-    return data as InfographicPage;
+    return normalizePage(data);
   },
 
-  async createPage(page: Omit<InfographicPage, 'id' | 'created_at' | 'updated_at'>) {
+  async createPage(page: Omit<InfographicPage, 'id' | 'created_at' | 'updated_at'> & { generation_hints?: GenerationHintValue[] }) {
     const { data, error } = await supabase
       .from('infographic_pages')
-      .insert(page)
+      .insert({
+        ...page,
+        generation_hints: sanitizeHints(page.generation_hints),
+      })
       .select()
       .single();
     
     if (error) throw error;
-    return data as InfographicPage;
+    return normalizePage(data);
   },
 
   async updatePage(id: string, updates: Partial<Omit<InfographicPage, 'id' | 'created_at' | 'updated_at'>>) {
+    const payload: Record<string, unknown> = { ...updates };
+    if (Object.prototype.hasOwnProperty.call(updates, 'generation_hints')) {
+      payload.generation_hints = sanitizeHints(updates.generation_hints as string[]);
+    }
+
     const { data, error } = await supabase
       .from('infographic_pages')
-      .update(updates)
+      .update(payload)
       .eq('id', id)
       .select()
       .single();
     
     if (error) throw error;
-    return data as InfographicPage;
+    return normalizePage(data);
   },
 
   async deletePage(id: string) {
@@ -186,6 +206,76 @@ export const infographicsService = {
       .eq('id', id);
     
     if (error) throw error;
+  },
+
+  async suggestGenerationHints(params: {
+    projectName: string;
+    projectDescription: string;
+    styleDescription?: string | null;
+    pageTitle: string;
+    pageContentMarkdown: string;
+    existingHints?: GenerationHintValue[];
+    maxSuggestions?: number;
+  }): Promise<GenerationHintSuggestion[]> {
+    if (!supabaseUrl) {
+      throw new Error('Supabase URL is not configured.');
+    }
+    if (!supabaseAnonKey) {
+      throw new Error('Supabase anonymous key is not configured.');
+    }
+
+    const payload = {
+      projectName: params.projectName,
+      projectDescription: params.projectDescription,
+      styleDescription: params.styleDescription ?? undefined,
+      pageTitle: params.pageTitle,
+      pageContentMarkdown: params.pageContentMarkdown ?? '',
+      existingHints: sanitizeHints(params.existingHints),
+      maxSuggestions: params.maxSuggestions ?? 4,
+    };
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/suggest-hints`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      const message = errorText || `Failed to fetch hint suggestions (status ${response.status})`;
+      throw new Error(message);
+    }
+
+    const data = await response.json();
+    const hints = Array.isArray(data?.hints) ? data.hints : [];
+
+    const sanitized = hints
+      .map((hint: any) => ({
+        value: typeof hint?.value === 'string' ? hint.value : '',
+        rationale: typeof hint?.rationale === 'string' ? hint.rationale : '',
+        confidence: typeof hint?.confidence === 'string' ? hint.confidence.toLowerCase() : 'medium',
+      }))
+      .filter((hint) => hint.value && hint.rationale);
+
+    const allowedValues = sanitizeHints(sanitized.map((hint) => hint.value));
+    const normalized: GenerationHintSuggestion[] = allowedValues.map((value) => {
+      const original = sanitized.find((hint) => hint.value.toLowerCase() === value);
+      const confidenceRaw = original?.confidence ?? 'medium';
+      const confidence = GENERATION_HINT_CONFIDENCE.includes(confidenceRaw as any)
+        ? (confidenceRaw as GenerationHintSuggestion['confidence'])
+        : 'medium';
+
+      return {
+        value,
+        rationale: original?.rationale ?? '',
+        confidence,
+      };
+    });
+
+    return normalized;
   },
 
   // Generate page HTML using the edge function

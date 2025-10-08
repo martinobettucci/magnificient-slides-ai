@@ -1,14 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { Code, Eye, Save, Sparkles, History, ChevronDown, MessageSquare, RotateCcw } from 'lucide-react';
+import { Code, Eye, Save, Sparkles, History, ChevronDown, MessageSquare, RotateCcw, Plus, X, Wand2 } from 'lucide-react';
 import { infographicsService, Infographic, InfographicPage, InfographicPageHistory } from '../../lib/supabase';
+import {
+  GENERATION_HINT_OPTIONS,
+  GenerationHintValue,
+  sanitizeHints,
+  getGenerationHintDetails,
+  GenerationHintSuggestion,
+} from '../../lib/generationHints';
+
+const CONFIDENCE_LABELS: Record<GenerationHintSuggestion['confidence'], string> = {
+  low: 'Confiance faible',
+  medium: 'Confiance moyenne',
+  high: 'Confiance élevée',
+};
+
+const NO_SUGGESTION_MESSAGE = "Aucune suggestion trouvée pour l'instant. Ajoutez davantage de contexte puis réessayez.";
 
 interface PageEditorProps {
   page: InfographicPage;
   infographic: Infographic;
   queueStatus?: string;
-  onUpdate: () => void;
+  onUpdate: (pageId: string) => Promise<void>;
   onGenerateHtml: (userComment?: string) => void;
 }
+
+type PageFormState = {
+  title: string;
+  content_markdown: string;
+  generation_hints: GenerationHintValue[];
+};
 
 export function PageEditor({ 
   page, 
@@ -18,9 +39,10 @@ export function PageEditor({
   queueStatus
 }: PageEditorProps) {
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<PageFormState>({
     title: page.title,
     content_markdown: page.content_markdown,
+    generation_hints: sanitizeHints(page.generation_hints),
   });
   const [saving, setSaving] = useState(false);
   const [pageHistory, setPageHistory] = useState<InfographicPageHistory[]>([]);
@@ -30,17 +52,131 @@ export function PageEditor({
   const [showRegeneratePrompt, setShowRegeneratePrompt] = useState(false);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [restoreVersionId, setRestoreVersionId] = useState<string>('');
+  const [hintPanelExpanded, setHintPanelExpanded] = useState(false);
+  const [hintSuggestions, setHintSuggestions] = useState<GenerationHintSuggestion[]>([]);
+  const [isSuggestingHints, setIsSuggestingHints] = useState(false);
+  const [hintSuggestionError, setHintSuggestionError] = useState<string | null>(null);
 
   // Check if current page has active queue jobs
   const hasActiveQueueJob = queueStatus === 'pending' || queueStatus === 'processing';
+  const pageHints = React.useMemo(() => sanitizeHints(page.generation_hints), [page.generation_hints]);
+  const pageHintsSet = React.useMemo(() => new Set(pageHints), [pageHints]);
+  const hintsAreEqual = React.useMemo(() => {
+    const current = new Set(formData.generation_hints);
+    const original = new Set(pageHints);
+    if (current.size !== original.size) return false;
+    for (const value of current) {
+      if (!original.has(value)) return false;
+    }
+    return true;
+  }, [formData.generation_hints, pageHints]);
+
+  const hasUnsavedChanges =
+    formData.title !== page.title ||
+    formData.content_markdown !== page.content_markdown ||
+    !hintsAreEqual;
+  const removedHints = React.useMemo(
+    () => pageHints.filter((hint) => !formData.generation_hints.includes(hint)),
+    [pageHints, formData.generation_hints],
+  );
+  const unappliedSuggestions = React.useMemo(
+    () => hintSuggestions.filter((hint) => !formData.generation_hints.includes(hint.value)),
+    [hintSuggestions, formData.generation_hints],
+  );
+
+  const toggleHint = (value: GenerationHintValue) => {
+    setFormData((prev) => {
+      const exists = prev.generation_hints.includes(value);
+      return {
+        ...prev,
+        generation_hints: exists
+          ? prev.generation_hints.filter((hint) => hint !== value)
+          : [...prev.generation_hints, value],
+      };
+    });
+  };
+
+  const addHint = (value: GenerationHintValue) => {
+    setFormData((prev) => {
+      if (prev.generation_hints.includes(value)) {
+        return prev;
+      }
+      return {
+        ...prev,
+        generation_hints: [...prev.generation_hints, value],
+      };
+    });
+  };
+
+  const clearAllHints = () => {
+    setFormData((prev) => ({
+      ...prev,
+      generation_hints: [],
+    }));
+  };
+
+  const handleSuggestHints = async () => {
+    try {
+      setIsSuggestingHints(true);
+      setHintSuggestionError(null);
+
+      const suggestions = await infographicsService.suggestGenerationHints({
+        projectName: infographic.name,
+        projectDescription: infographic.description,
+        styleDescription: infographic.style_description,
+        pageTitle: formData.title,
+        pageContentMarkdown: formData.content_markdown?.trim().length
+          ? formData.content_markdown
+          : page.content_markdown ?? '',
+        existingHints: formData.generation_hints,
+        maxSuggestions: 4,
+      });
+
+      setHintSuggestions(suggestions);
+      if (suggestions.length === 0) {
+        setHintSuggestionError(NO_SUGGESTION_MESSAGE);
+      }
+      if (suggestions.length > 0 && !hintPanelExpanded) {
+        setHintPanelExpanded(true);
+      }
+    } catch (err) {
+      console.error('Failed to suggest hints:', err);
+      setHintSuggestionError(
+        err instanceof Error
+          ? err.message
+          : 'Impossible de récupérer des suggestions pour le moment.',
+      );
+    } finally {
+      setIsSuggestingHints(false);
+    }
+  };
+
+  const handleApplySuggestedHint = (value: GenerationHintValue) => {
+    addHint(value);
+  };
+
+  const handleApplyAllSuggestedHints = () => {
+    if (unappliedSuggestions.length === 0) return;
+    setFormData((prev) => ({
+      ...prev,
+      generation_hints: sanitizeHints([
+        ...prev.generation_hints,
+        ...unappliedSuggestions.map((hint) => hint.value),
+      ]),
+    }));
+  };
 
   // Update form data when page changes
   useEffect(() => {
     setFormData({
       title: page.title,
       content_markdown: page.content_markdown,
+      generation_hints: sanitizeHints(page.generation_hints),
     });
-  }, [page.id, page.title, page.content_markdown]);
+    setHintSuggestions([]);
+    setHintSuggestionError(null);
+    setIsSuggestingHints(false);
+  }, [page.id, page.title, page.content_markdown, page.generation_hints]);
 
   // Load page history when page changes
   useEffect(() => {
@@ -78,7 +214,7 @@ export function PageEditor({
       await infographicsService.generatePageHtml(page.id, regenerateComment.trim());
       setShowRegeneratePrompt(false);
       setRegenerateComment('');
-      onUpdate();
+      await onUpdate(page.id);
     } catch (err) {
       console.error('Failed to regenerate with comment:', err);
     }
@@ -105,7 +241,7 @@ export function PageEditor({
       });
       
       // Refresh all data
-      onUpdate();
+      await onUpdate(page.id);
       
       // Reload the page history
       const updatedHistory = await infographicsService.getPageHistory(page.id);
@@ -125,7 +261,7 @@ export function PageEditor({
     try {
       setSaving(true);
       await infographicsService.updatePage(page.id, formData);
-      onUpdate();
+      await onUpdate(page.id);
     } catch (err) {
       console.error('Failed to save page:', err);
     } finally {
@@ -134,7 +270,7 @@ export function PageEditor({
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="h-full min-h-0 flex flex-col overflow-hidden">
       {/* Page Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-5 shadow-sm">
         <div className="flex items-center justify-between">
@@ -169,6 +305,22 @@ export function PageEditor({
             </div>
           </div>
           <div className="flex items-center space-x-3">
+            {activeTab === 'edit' && (
+              <button
+                onClick={handleSave}
+                disabled={saving || !hasUnsavedChanges}
+                className="group inline-flex items-center p-3 text-white bg-indigo-500 hover:bg-indigo-600 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                {saving ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-2">
+                  {saving ? 'Saving…' : hasUnsavedChanges ? 'Save Changes' : 'Saved'}
+                </span>
+              </button>
+            )}
             <button
                 onClick={() => onGenerateHtml()}
                 disabled={hasActiveQueueJob}
@@ -181,7 +333,137 @@ export function PageEditor({
               </button>
           </div>
         </div>
-        
+        <div className="mt-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold tracking-wide uppercase text-gray-500">
+              Hints actifs
+            </span>
+            {formData.generation_hints.length > 0 && (
+              <button
+                type="button"
+                onClick={clearAllHints}
+                className="inline-flex items-center text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors"
+              >
+                <X className="w-3 h-3 mr-1" />
+                Réinitialiser
+              </button>
+            )}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {formData.generation_hints.length > 0 ? (
+              formData.generation_hints.map((value) => {
+                const option = getGenerationHintDetails(value);
+                const isPersisted = pageHintsSet.has(value);
+                return (
+                  <span
+                    key={value}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 ${isPersisted ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}
+                    title={option?.description}
+                  >
+                    {option?.label ?? value}
+                    {!isPersisted && <span className="text-[10px] uppercase tracking-wide">nouveau</span>}
+                  </span>
+                );
+              })
+            ) : (
+              <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200">
+                Aucun hint sélectionné
+              </span>
+            )}
+          </div>
+          {removedHints.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {removedHints.map((value) => {
+                const option = getGenerationHintDetails(value);
+                return (
+                  <span
+                    key={`removed-${value}`}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-rose-50 text-rose-600 border border-rose-100"
+                  >
+                    {option?.label ?? value}
+                    <span className="ml-2 text-[10px] uppercase tracking-wide">retiré</span>
+                  </span>
+                );
+              })}
+            </div>
+          )}
+          {hintSuggestionError && (
+            <p
+              className={`mt-3 text-sm ${
+                hintSuggestionError === NO_SUGGESTION_MESSAGE ? 'text-gray-600' : 'text-rose-600'
+              }`}
+            >
+              {hintSuggestionError}
+            </p>
+          )}
+          {hintSuggestions.length > 0 && (
+            <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <span className="text-xs font-semibold tracking-wide uppercase text-indigo-600">
+                    Suggestions IA
+                  </span>
+                  <p className="text-xs text-indigo-900/80 mt-1">
+                    Sélectionne les hints proposés pour enrichir la génération.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleApplyAllSuggestedHints}
+                  disabled={unappliedSuggestions.length === 0}
+                  className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border border-indigo-300 text-indigo-700 hover:bg-indigo-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Ajouter tout
+                </button>
+              </div>
+              <div className="space-y-3">
+                {hintSuggestions.map((suggestion) => {
+                  const option = getGenerationHintDetails(suggestion.value);
+                  const isSelected = formData.generation_hints.includes(suggestion.value);
+                  return (
+                    <div
+                      key={`suggestion-${suggestion.value}`}
+                      className={`rounded-lg border bg-white/90 p-4 transition-all shadow-sm ${
+                        isSelected ? 'border-indigo-200' : 'border-indigo-100 hover:border-indigo-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-indigo-700">
+                              {option?.label ?? suggestion.value}
+                            </span>
+                            <span className="text-[10px] uppercase tracking-wide bg-indigo-100/70 text-indigo-600 px-2 py-0.5 rounded-full">
+                              {CONFIDENCE_LABELS[suggestion.confidence]}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-2 leading-relaxed">
+                            {suggestion.rationale}
+                          </p>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {isSelected ? (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                              Ajouté
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleApplySuggestedHint(suggestion.value)}
+                              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border border-indigo-300 text-indigo-700 hover:bg-indigo-100 transition-all"
+                            >
+                              Ajouter
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Content */}
@@ -198,6 +480,83 @@ export function PageEditor({
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white shadow-sm"
               />
+            </div>
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-semibold text-gray-800">
+                  Generation hints
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSuggestHints}
+                    disabled={isSuggestingHints}
+                    className="inline-flex items-center px-3 py-2 rounded-full text-xs font-medium border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+                  >
+                    {isSuggestingHints ? (
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-indigo-600 mr-2" />
+                    ) : (
+                      <Wand2 className="w-4 h-4 mr-2" />
+                    )}
+                    Suggestions IA
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHintPanelExpanded((prev) => !prev)}
+                    className="inline-flex items-center px-2.5 py-2 rounded-full text-xs font-medium border border-indigo-200 bg-transparent text-indigo-600 hover:bg-indigo-50 transition-all"
+                  >
+                    <Plus className={`w-4 h-4 mr-1 transition-transform ${hintPanelExpanded ? 'rotate-45' : ''}`} />
+                    {hintPanelExpanded ? 'Masquer' : 'Détails'}
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {GENERATION_HINT_OPTIONS.map((option) => {
+                  const isActive = formData.generation_hints.includes(option.value);
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => toggleHint(option.value)}
+                      className={`px-3 py-2 rounded-full text-xs font-medium border transition-all duration-200 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50'
+                      }`}
+                      title={option.description}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {hintPanelExpanded && (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {GENERATION_HINT_OPTIONS.map((option) => {
+                    const isActive = formData.generation_hints.includes(option.value);
+                    return (
+                      <div
+                        key={`hint-detail-${option.value}`}
+                        className={`rounded-xl border bg-white/80 p-4 text-sm transition-all ${
+                          isActive ? 'border-indigo-200 shadow-sm' : 'border-gray-200'
+                        }`}
+                      >
+                        <div className="font-semibold text-gray-800 flex items-center justify-between">
+                          <span>{option.label}</span>
+                          {isActive && (
+                            <span className="text-[10px] uppercase tracking-wide text-indigo-500">
+                              sélectionné
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-2 text-gray-600 text-sm leading-relaxed">
+                          {option.description}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <div className="flex-1 flex flex-col mt-6 min-h-0 overflow-hidden">
               <label className="block text-sm font-semibold text-gray-800 mb-3">

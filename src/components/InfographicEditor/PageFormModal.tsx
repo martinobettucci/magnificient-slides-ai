@@ -32,6 +32,7 @@ export function PageFormModal({
         content_markdown: formData.content_markdown,
         page_order: 0,
         generated_html: '',
+        generation_hints: [],
       });
       onSave();
     } catch (err) {

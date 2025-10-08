@@ -154,6 +154,7 @@ export function MarkdownImporter({ infographicId, onImport, onCancel }: Markdown
           content_markdown: page.content,
           page_order: i,
           generated_html: '',
+          generation_hints: [],
         });
       }
 

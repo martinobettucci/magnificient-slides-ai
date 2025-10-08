@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, Plus, Play, Settings, Zap, FileDown, Sparkles } from 'lucide-react';
-import { infographicsService, Infographic, InfographicPage, supabase } from '../lib/supabase';
+import { infographicsService, Infographic, InfographicPage } from '../lib/supabase';
 import { InfographicSlideshow } from './InfographicSlideshow';
 import { MarkdownImporter } from './InfographicEditor/MarkdownImporter';
 import { PagesSidebar } from './InfographicEditor/PagesSidebar';
@@ -22,10 +22,13 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   const [showSlideshow, setShowSlideshow] = useState(false);
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(new Set());
   const [pageRecentStatusMap, setPageRecentStatusMap] = useState<Map<string, string>>(new Map());
+  const pageStatusRef = useRef<Map<string, string>>(new Map());
+  const pagesRef = useRef<InfographicPage[]>([]);
+  const selectedPageRef = useRef<InfographicPage | null>(null);
   const [activeQueueCount, setActiveQueueCount] = useState(0);
   const [triggeringWorker, setTriggeringWorker] = useState(false);
-  const [realtimeSubscription, setRealtimeSubscription] = useState<any>(null);
   const [showMarkdownImporter, setShowMarkdownImporter] = useState(false);
+  const pollingIntervalRef = useRef<number | null>(null);
 
   // Calculate page status counts
   const pageStatusCounts = React.useMemo(() => {
@@ -49,83 +52,31 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
 
   const allPagesGenerated = pageStatusCounts.total > 0 && pageStatusCounts.generated === pageStatusCounts.total;
 
-  useEffect(() => {
-    loadPages();
-  }, [infographic.id]);
-
-  // Separate effect for queue status and real-time subscription
-  useEffect(() => {
-    if (pages.length > 0) {
-      // Initial queue status load
-      pollQueueStatus();
-      
-      // Set up real-time subscription for queue updates
-      setupRealtimeSubscription();
-    }
-    
-    return () => {
-      if (realtimeSubscription) {
-        realtimeSubscription.unsubscribe();
-      }
-    };
-  }, [pages.length, infographic.id]);
-
-  const setupRealtimeSubscription = () => {
-    // Clean up existing subscription
-    if (realtimeSubscription) {
-      realtimeSubscription.unsubscribe();
-    }
-
-    // Subscribe to changes in the generation_queue table
-    const subscription = supabase
-      .channel('generation_queue_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'generation_queue'
-        },
-        (payload) => {
-          console.log('Real-time queue update:', payload);
-          // Refresh queue status when any change occurs
-          pollQueueStatus();
-          
-          // If a page was completed, reload pages to get updated HTML
-          if (payload.eventType === 'UPDATE' && payload.new?.status === 'completed') {
-            loadPages();
-            
-            // Update selected page if it was completed
-            if (selectedPage && payload.new?.infographic_page_id === selectedPage.id) {
-              infographicsService.getPage(selectedPage.id).then(updatedPage => {
-                setSelectedPage(updatedPage);
-              }).catch(console.error);
-            }
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('Real-time subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to generation queue updates');
-        }
-      });
-
-    setRealtimeSubscription(subscription);
-  };
-
-  const loadPages = async () => {
+  const loadPages = useCallback(async () => {
     try {
       setLoading(true);
       const data = await infographicsService.getPages(infographic.id);
       console.log('Loaded pages:', data.length);
+      pagesRef.current = data;
       setPages(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load pages');
     } finally {
       setLoading(false);
     }
-  };
+  }, [infographic.id]);
+
+  useEffect(() => {
+    loadPages();
+  }, [loadPages]);
+
+  useEffect(() => {
+    pagesRef.current = pages;
+  }, [pages]);
+
+  useEffect(() => {
+    selectedPageRef.current = selectedPage;
+  }, [selectedPage]);
 
   const handleDeletePage = async (pageId: string) => {
     if (confirm('Are you sure you want to delete this page?')) {
@@ -141,17 +92,25 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
     }
   };
 
-  const pollQueueStatus = async () => {
+  const pollQueueStatus = useCallback(async (): Promise<number> => {
     try {
-      console.log('Polling queue status for pages:', pages.map(p => p.id));
-      if (pages.length === 0) return;
+      const currentPages = pagesRef.current;
+      console.log('Polling queue status for pages:', currentPages.map(p => p.id));
+      if (currentPages.length === 0) {
+        pageStatusRef.current = new Map();
+        setPageRecentStatusMap(new Map());
+        setActiveQueueCount(prev => (prev === 0 ? prev : 0));
+        return 0;
+      }
       
-      const pageIds = pages.map(p => p.id);
+      const pageIds = currentPages.map(p => p.id);
       const queueItems = await infographicsService.getGenerationQueueStatus(pageIds);
       console.log('Queue items found:', queueItems);
       
       const recentStatusMap = new Map<string, string>();
       let activeCount = 0;
+      const completedPageIds = new Set<string>();
+      const previousMap = pageStatusRef.current;
       
       queueItems.forEach(item => {
         // Only set the status if we haven't seen this page yet (most recent due to ordering)
@@ -163,19 +122,119 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
         if (item.status === 'pending' || item.status === 'processing') {
           activeCount++;
         }
+        
+        const previousStatus = previousMap.get(item.infographic_page_id);
+        if (item.status === 'completed' && previousStatus !== 'completed') {
+          completedPageIds.add(item.infographic_page_id);
+        }
       });
-      
-      setPageRecentStatusMap(recentStatusMap);
-      setActiveQueueCount(activeCount);
+
+      const mapsEqual = () => {
+        if (recentStatusMap.size !== previousMap.size) return false;
+        for (const [key, value] of recentStatusMap.entries()) {
+          if (previousMap.get(key) !== value) {
+            return false;
+          }
+        }
+        return true;
+      };
+
+      if (!mapsEqual()) {
+        pageStatusRef.current = recentStatusMap;
+        setPageRecentStatusMap(recentStatusMap);
+      }
+
+      setActiveQueueCount(prev => (prev === activeCount ? prev : activeCount));
       console.log('Updated queue status:', {
         recentStatusMap: Object.fromEntries(recentStatusMap),
         activeCount
       });
+
+      if (completedPageIds.size > 0) {
+        console.log('Detected pages that completed generation, refreshing them individually');
+        const refreshedPages = await Promise.all(
+          Array.from(completedPageIds).map(async (pageId) => {
+            try {
+              return await infographicsService.getPage(pageId);
+            } catch (pageErr) {
+              console.error(`Failed to refresh page ${pageId}:`, pageErr);
+              return null;
+            }
+          }),
+        );
+
+        const refreshedMap = new Map(
+          refreshedPages
+            .filter((page): page is InfographicPage => page !== null)
+            .map((page) => [page.id, page]),
+        );
+
+        if (refreshedMap.size > 0) {
+          setPages((prev) => {
+            let hasChanges = false;
+            const next = prev.map((page) => {
+              const updated = refreshedMap.get(page.id);
+              if (!updated) {
+                return page;
+              }
+              if (updated.updated_at === page.updated_at) {
+                return page;
+              }
+              hasChanges = true;
+              return updated;
+            });
+            if (hasChanges) {
+              pagesRef.current = next;
+            }
+            return hasChanges ? next : prev;
+          });
+
+          const currentSelected = selectedPageRef.current;
+          if (currentSelected && refreshedMap.has(currentSelected.id)) {
+            const updatedSelected = refreshedMap.get(currentSelected.id)!;
+            if (updatedSelected.updated_at !== currentSelected.updated_at) {
+              selectedPageRef.current = updatedSelected;
+              setSelectedPage(updatedSelected);
+            }
+          }
+        }
+      }
+      
+      return activeCount;
       
     } catch (err) {
       console.error('Error polling queue status:', err);
+      const fallbackCount = Array.from(pageStatusRef.current.values()).reduce((count, status) => {
+        return status === 'pending' || status === 'processing' ? count + 1 : count;
+      }, 0);
+      setActiveQueueCount(prev => (prev === fallbackCount ? prev : fallbackCount));
+      return fallbackCount;
     }
-  };
+  }, []);
+
+  // Poll for queue status changes using HTTP requests instead of WebSockets
+  useEffect(() => {
+    if (pages.length === 0) {
+      return;
+    }
+
+    // Kick off an immediate poll so the UI is current
+    void pollQueueStatus();
+
+    const POLL_INTERVAL_MS = 5000;
+    const intervalId = window.setInterval(() => {
+      void pollQueueStatus();
+    }, POLL_INTERVAL_MS);
+
+    pollingIntervalRef.current = intervalId;
+
+    return () => {
+      if (pollingIntervalRef.current !== null) {
+        window.clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [pages.length, infographic.id, pollQueueStatus]);
 
   const handleTriggerWorker = async () => {
     try {
@@ -187,8 +246,9 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       // Process items one by one until queue is empty
       let processed = 0;
       const maxAttempts = 10; // Prevent infinite loops
+      let pending = activeQueueCount > 0 ? activeQueueCount : await pollQueueStatus();
       
-      while (processed < maxAttempts && activeQueueCount > 0) {
+      while (processed < maxAttempts && pending > 0) {
         console.log(`Processing attempt ${processed + 1}...`);
         try {
           await infographicsService.triggerQueueWorker();
@@ -206,10 +266,10 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Check if there are still pending items
-        await pollQueueStatus();
+        pending = await pollQueueStatus();
         processed++;
         
-        if (activeQueueCount === 0) {
+        if (pending === 0) {
           console.log('All queue items processed');
           break;
         }
@@ -240,7 +300,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       // Real-time subscription will handle the updates automatically,
       // but let's also refresh immediately for better UX
       setTimeout(() => {
-        pollQueueStatus();
+        void pollQueueStatus();
       }, 100);
       
       console.log('=== handleGenerateHtml Success ===');
@@ -307,8 +367,21 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   };
 
   const handleUpdatePages = () => {
-    loadPages();
+    void loadPages();
   };
+
+  const handleSelectedPageUpdated = useCallback(
+    async (pageId: string) => {
+      await loadPages();
+      try {
+        const updatedPage = await infographicsService.getPage(pageId);
+        setSelectedPage((current) => (current?.id === pageId ? updatedPage : current));
+      } catch (err) {
+        console.error('Failed to refresh selected page after update:', err);
+      }
+    },
+    [loadPages],
+  );
 
   if (loading) {
     return (
@@ -319,7 +392,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 to-gray-100">
+    <div className="h-full min-h-0 flex flex-col bg-gradient-to-br from-slate-50 to-gray-100">
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-5 shadow-sm">
         <div className="flex items-center justify-between">
@@ -439,7 +512,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
         </div>
       )}
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Pages Sidebar */}
         <PagesSidebar
           pages={pages}
@@ -457,12 +530,12 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
         />
 
         {/* Main Content */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden min-h-0">
           {selectedPage ? (
             <PageEditor
               page={selectedPage}
               infographic={infographic}
-              onUpdate={loadPages}
+              onUpdate={handleSelectedPageUpdated}
               onGenerateHtml={(userComment) => 
                 userComment 
                   ? handleGenerateHtml(selectedPage.id, userComment)
