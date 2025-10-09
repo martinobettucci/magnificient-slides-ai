@@ -29,28 +29,48 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   const [triggeringWorker, setTriggeringWorker] = useState(false);
   const [showMarkdownImporter, setShowMarkdownImporter] = useState(false);
   const pollingIntervalRef = useRef<number | null>(null);
+  const [pageFilter, setPageFilter] = useState<'all' | 'draft' | 'processing' | 'generated'>('all');
 
   // Calculate page status counts
   const pageStatusCounts = React.useMemo(() => {
     let drafts = 0;
-    let queued = 0;
+    let processing = 0;
     let generated = 0;
-    
-    pages.forEach(page => {
+
+    pages.forEach((page) => {
       const status = pageRecentStatusMap.get(page.id);
       if (status === 'pending' || status === 'processing') {
-        queued++;
+        processing++;
       } else if (page.generated_html) {
         generated++;
       } else {
         drafts++;
       }
     });
-    
-    return { drafts, queued, generated, total: pages.length };
+
+    return { drafts, processing, generated, total: pages.length };
   }, [pages, pageRecentStatusMap]);
 
   const allPagesGenerated = pageStatusCounts.total > 0 && pageStatusCounts.generated === pageStatusCounts.total;
+
+  const filteredPages = React.useMemo(() => {
+    if (pageFilter === 'all') return pages;
+    return pages.filter((page) => {
+      const status = pageRecentStatusMap.get(page.id);
+      const isProcessing = status === 'pending' || status === 'processing';
+      if (pageFilter === 'processing') {
+        return isProcessing;
+      }
+      if (isProcessing) return false;
+      if (pageFilter === 'generated') {
+        return !!page.generated_html;
+      }
+      if (pageFilter === 'draft') {
+        return !page.generated_html;
+      }
+      return true;
+    });
+  }, [pages, pageFilter, pageRecentStatusMap]);
 
   const loadPages = useCallback(async () => {
     try {
@@ -108,7 +128,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       console.log('Queue items found:', queueItems);
       
       const recentStatusMap = new Map<string, string>();
-      let activeCount = 0;
+      let pendingCount = 0;
       const completedPageIds = new Set<string>();
       const previousMap = pageStatusRef.current;
       
@@ -118,9 +138,9 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
           recentStatusMap.set(item.infographic_page_id, item.status);
         }
         
-        // Count active jobs (pending or processing)
-        if (item.status === 'pending' || item.status === 'processing') {
-          activeCount++;
+        // Count jobs still waiting to be processed
+        if (item.status === 'pending') {
+          pendingCount++;
         }
         
         const previousStatus = previousMap.get(item.infographic_page_id);
@@ -144,10 +164,10 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
         setPageRecentStatusMap(recentStatusMap);
       }
 
-      setActiveQueueCount(prev => (prev === activeCount ? prev : activeCount));
+      setActiveQueueCount(prev => (prev === pendingCount ? prev : pendingCount));
       console.log('Updated queue status:', {
         recentStatusMap: Object.fromEntries(recentStatusMap),
-        activeCount
+        pendingCount
       });
 
       if (completedPageIds.size > 0) {
@@ -200,12 +220,12 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
         }
       }
       
-      return activeCount;
+      return pendingCount;
       
     } catch (err) {
       console.error('Error polling queue status:', err);
       const fallbackCount = Array.from(pageStatusRef.current.values()).reduce((count, status) => {
-        return status === 'pending' || status === 'processing' ? count + 1 : count;
+        return status === 'pending' ? count + 1 : count;
       }, 0);
       setActiveQueueCount(prev => (prev === fallbackCount ? prev : fallbackCount));
       return fallbackCount;
@@ -327,7 +347,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       : pages.filter(page => !page.generated_html && !pageRecentStatusMap.has(page.id));
     
     if (pagesToGenerate.length === 0) {
-      setError(selectedPageIds.size > 0 ? 'No pages selected for generation' : 'All pages already have generated HTML or are queued');
+      setError(selectedPageIds.size > 0 ? 'No pages selected for generation' : 'All pages already have generated HTML or are currently processing');
       return;
     }
 
@@ -359,11 +379,19 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   };
 
   const handleSelectAll = () => {
-    if (selectedPageIds.size === pages.length) {
+    const targetPages = filteredPages;
+    if (targetPages.length === 0) {
       setSelectedPageIds(new Set());
-    } else {
-      setSelectedPageIds(new Set(pages.map(p => p.id)));
+      return;
     }
+    const allSelected = targetPages.every((page) => selectedPageIds.has(page.id));
+    const next = new Set(selectedPageIds);
+    if (allSelected) {
+      targetPages.forEach((page) => next.delete(page.id));
+    } else {
+      targetPages.forEach((page) => next.add(page.id));
+    }
+    setSelectedPageIds(next);
   };
 
   const handleUpdatePages = () => {
@@ -426,7 +454,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
                   </div>
                   <div className="flex items-center space-x-1">
                     <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                    <span className="text-gray-600">{pageStatusCounts.queued} queued</span>
+                    <span className="text-gray-600">{pageStatusCounts.processing} processing</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <div className="w-2 h-2 bg-green-400 rounded-full"></div>
@@ -516,10 +544,14 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
         {/* Pages Sidebar */}
         <PagesSidebar
           pages={pages}
+          filteredPages={filteredPages}
           selectedPage={selectedPage}
           selectedPageIds={selectedPageIds}
           pageRecentStatusMap={pageRecentStatusMap}
           activeQueueCount={activeQueueCount}
+          pageFilter={pageFilter}
+          onFilterChange={setPageFilter}
+          statusSummary={pageStatusCounts}
           onSelectPage={setSelectedPage}
           onSelectPageId={handleSelectPageId}
           onSelectAll={handleSelectAll}
@@ -558,9 +590,18 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
       {showPageForm && (
         <PageFormModal
           infographicId={infographic.id}
-          onSave={() => {
+          nextPageOrder={
+            pages.length > 0 ? Math.max(...pages.map((page) => page.page_order ?? 0)) + 1 : 0
+          }
+          onSave={(createdPage) => {
             setShowPageForm(false);
-            loadPages();
+            setPages((prev) => {
+              const next = [...prev, createdPage].sort((a, b) => a.page_order - b.page_order);
+              pagesRef.current = next;
+              return next;
+            });
+            setSelectedPage(createdPage);
+            selectedPageRef.current = createdPage;
           }}
           onCancel={() => setShowPageForm(false)}
         />

@@ -20,10 +20,14 @@ import { SortablePageItem } from './SortablePageItem';
 
 interface PagesSidebarProps {
   pages: InfographicPage[];
+  filteredPages: InfographicPage[];
   selectedPage: InfographicPage | null;
   selectedPageIds: Set<string>;
   pageRecentStatusMap: Map<string, string>;
   activeQueueCount: number;
+  pageFilter: 'all' | 'draft' | 'processing' | 'generated';
+  onFilterChange: (value: 'all' | 'draft' | 'processing' | 'generated') => void;
+  statusSummary: { drafts: number; processing: number; generated: number; total: number };
   onSelectPage: (page: InfographicPage) => void;
   onSelectPageId: (pageId: string, selected: boolean) => void;
   onSelectAll: () => void;
@@ -35,10 +39,14 @@ interface PagesSidebarProps {
 
 export function PagesSidebar({
   pages,
+  filteredPages,
   selectedPage,
   selectedPageIds,
   pageRecentStatusMap,
   activeQueueCount,
+  pageFilter,
+  onFilterChange,
+  statusSummary,
   onSelectPage,
   onSelectPageId,
   onSelectAll,
@@ -108,10 +116,43 @@ export function PagesSidebar({
     setOriginalPages([]);
   };
 
-  const pagesToShow = isEditingOrder ? localPages : pages;
+  const pagesToShow = isEditingOrder ? localPages : filteredPages;
+  const selectedInFilterCount = filteredPages.filter((page) => selectedPageIds.has(page.id)).length;
+  const allFilteredSelected = filteredPages.length > 0 && selectedInFilterCount === filteredPages.length;
+
+  const filterOptions: { value: typeof pageFilter; label: string; count: number }[] = [
+    { value: 'all', label: 'Toutes', count: statusSummary.total },
+    { value: 'draft', label: 'Brouillons', count: statusSummary.drafts },
+    { value: 'processing', label: 'En cours', count: statusSummary.processing },
+    { value: 'generated', label: 'Générées', count: statusSummary.generated },
+  ];
 
   return (
     <div className="w-80 bg-white/50 backdrop-blur-sm border-r border-gray-200 overflow-y-auto flex-shrink-0">
+        <div className="mb-4">
+          <div className="flex flex-wrap gap-2">
+            {filterOptions.map((option) => {
+              const isActive = pageFilter === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => onFilterChange(option.value)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                    isActive
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                  }`}
+                >
+                  {option.label}
+                  <span className={`ml-1 text-[11px] ${isActive ? 'text-indigo-100' : 'text-gray-400'}`}>
+                    ({option.count})
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             {isEditingOrder ? (
@@ -153,13 +194,13 @@ export function PagesSidebar({
                     onClick={onSelectAll}
                     className="group text-xs text-indigo-600 hover:text-indigo-800 transition-all duration-300 px-2 py-1.5 bg-indigo-50 rounded-lg font-medium overflow-hidden inline-flex items-center"
                   >
-                    {selectedPageIds.size === pages.length ? (
+                    {allFilteredSelected ? (
                       <CheckSquare className="w-3 h-3" />
                     ) : (
                       <Square className="w-3 h-3" />
                     )}
                     <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
-                      {selectedPageIds.size === pages.length ? 'Deselect All' : 'Select All'}
+                      {allFilteredSelected ? 'Deselect All' : 'Select All'}
                     </span>
                   </button>
                 )}
@@ -176,12 +217,16 @@ export function PagesSidebar({
           </div>
         )}
 
-        {pages.length === 0 ? (
+        {pagesToShow.length === 0 ? (
           <div className="text-center py-12">
             <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
               <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 font-medium">No pages yet</p>
-              <p className="text-gray-400 text-sm mt-1">Click "Add Page" to get started</p>
+              <p className="text-gray-500 font-medium">
+                {pages.length === 0 ? 'No pages yet' : 'No pages match this filter'}
+              </p>
+              <p className="text-gray-400 text-sm mt-1">
+                {pages.length === 0 ? 'Click "Add Page" to get started' : 'Try another filter to view more pages'}
+              </p>
             </div>
           </div>
         ) : (

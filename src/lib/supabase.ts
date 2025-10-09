@@ -269,6 +269,67 @@ export const infographicsService = {
     if (error) throw error;
   },
 
+  async rewritePageContent(params: {
+    pageId: string;
+    pageTitle: string;
+    projectName: string;
+    projectDescription: string;
+    existingMarkdown: string;
+    useWebSearch?: boolean;
+  }) {
+    if (!supabaseUrl) {
+      throw new Error('Supabase URL is not configured.');
+    }
+    if (!supabaseAnonKey) {
+      throw new Error('Supabase anonymous key is not configured.');
+    }
+
+    const apiUrl = `${supabaseUrl}/functions/v1/rewrite-page`;
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        projectName: params.projectName,
+        projectDescription: params.projectDescription,
+        pageTitle: params.pageTitle,
+        existingMarkdown: params.existingMarkdown,
+        useWebSearch: params.useWebSearch ?? false,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let message = errorText;
+      try {
+        const parsed = JSON.parse(errorText);
+        message = parsed.details || parsed.error || errorText;
+      } catch {
+        // ignore
+      }
+      throw new Error(`Failed to rewrite page content (${response.status}): ${message}`);
+    }
+
+    const payload = await response.json();
+    const newMarkdown = typeof payload?.markdown === 'string' ? payload.markdown : '';
+    if (!newMarkdown) {
+      throw new Error('Rewrite function returned empty markdown content');
+    }
+
+    const updatedPage = await this.updatePage(params.pageId, {
+      content_markdown: newMarkdown,
+    });
+
+    return {
+      markdown: newMarkdown,
+      page: updatedPage,
+      summary: payload?.summary ?? '',
+      usedWebSearch: !!payload?.usedWebSearch,
+    };
+  },
+
   async suggestGenerationHints(params: {
     projectName: string;
     projectDescription: string;

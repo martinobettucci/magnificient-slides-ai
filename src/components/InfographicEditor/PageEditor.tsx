@@ -56,6 +56,11 @@ export function PageEditor({
   const [hintSuggestions, setHintSuggestions] = useState<GenerationHintSuggestion[]>([]);
   const [isSuggestingHints, setIsSuggestingHints] = useState(false);
   const [hintSuggestionError, setHintSuggestionError] = useState<string | null>(null);
+  const [showRewriteModal, setShowRewriteModal] = useState(false);
+  const [rewriteUseWebSearch, setRewriteUseWebSearch] = useState(false);
+  const [isRewriting, setIsRewriting] = useState(false);
+  const [rewriteError, setRewriteError] = useState<string | null>(null);
+  const [rewriteSummary, setRewriteSummary] = useState<string | null>(null);
 
   // Check if current page has active queue jobs
   const hasActiveQueueJob = queueStatus === 'pending' || queueStatus === 'processing';
@@ -165,6 +170,38 @@ export function PageEditor({
       ]),
     }));
   };
+
+  const handleRewriteContent = async () => {
+    try {
+      setIsRewriting(true);
+      setRewriteError(null);
+      const result = await infographicsService.rewritePageContent({
+        pageId: page.id,
+        pageTitle: formData.title || page.title,
+        projectName: infographic.name,
+        projectDescription: infographic.description,
+        existingMarkdown: formData.content_markdown || page.content_markdown,
+        useWebSearch: rewriteUseWebSearch,
+      });
+      setFormData((prev) => ({
+        ...prev,
+        content_markdown: result.markdown,
+      }));
+      setRewriteSummary(result.summary || null);
+      setShowRewriteModal(false);
+      setRewriteUseWebSearch(false);
+      await onUpdate(page.id);
+    } catch (err) {
+      console.error('Failed to rewrite page content:', err);
+      setRewriteError(err instanceof Error ? err.message : "La réécriture a échoué.");
+    } finally {
+      setIsRewriting(false);
+    }
+  };
+
+  useEffect(() => {
+    setRewriteSummary(null);
+  }, [page.id]);
 
   // Update form data when page changes
   useEffect(() => {
@@ -306,20 +343,41 @@ export function PageEditor({
           </div>
           <div className="flex items-center space-x-3">
             {activeTab === 'edit' && (
-              <button
-                onClick={handleSave}
-                disabled={saving || !hasUnsavedChanges}
-                className="group inline-flex items-center p-3 text-white bg-indigo-500 hover:bg-indigo-600 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-              >
-                {saving ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
-                <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-2">
-                  {saving ? 'Saving…' : hasUnsavedChanges ? 'Save Changes' : 'Saved'}
-                </span>
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    setRewriteError(null);
+                    setRewriteSummary(null);
+                    setRewriteUseWebSearch(false);
+                    setShowRewriteModal(true);
+                  }}
+                  disabled={isRewriting}
+                  className="group inline-flex items-center p-3 text-indigo-600 bg-white border border-indigo-200 hover:bg-indigo-50 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                >
+                  {isRewriting ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-500" />
+                  ) : (
+                    <Wand2 className="w-4 h-4" />
+                  )}
+                  <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-2">
+                    {isRewriting ? 'Rewriting…' : 'Rewrite with AI'}
+                  </span>
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving || !hasUnsavedChanges}
+                  className="group inline-flex items-center p-3 text-white bg-indigo-500 hover:bg-indigo-600 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                >
+                  {saving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-2">
+                    {saving ? 'Saving…' : hasUnsavedChanges ? 'Save Changes' : 'Saved'}
+                  </span>
+                </button>
+              </>
             )}
             <button
                 onClick={() => onGenerateHtml()}
@@ -331,9 +389,24 @@ export function PageEditor({
                   {queueStatus === 'pending' ? 'Queued' : queueStatus === 'processing' ? 'Processing...' : 'Generate HTML'}
                 </span>
               </button>
-          </div>
         </div>
-        <div className="mt-4">
+      </div>
+      {rewriteSummary && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-lg flex items-start justify-between">
+          <p className="text-sm mr-4">
+            <strong>Résumé de la réécriture :</strong> {rewriteSummary}
+          </p>
+          <button
+            type="button"
+            onClick={() => setRewriteSummary(null)}
+            className="text-emerald-600 hover:text-emerald-800"
+            aria-label="Fermer le résumé"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+      <div className="mt-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold tracking-wide uppercase text-gray-500">
               Hints actifs
@@ -780,6 +853,79 @@ export function PageEditor({
                   className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all font-medium"
                 >
                   Restore Version
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showRewriteModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+            <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-gray-200 p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Réécrire le contenu avec l'IA</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    L'IA va réorganiser et reformater cette page en Markdown soigné tout en conservant l'intention originale.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isRewriting) return;
+                    setShowRewriteModal(false);
+                    setRewriteError(null);
+                    setRewriteUseWebSearch(false);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                  aria-label="Fermer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                <label className="flex items-start space-x-3 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                    checked={rewriteUseWebSearch}
+                    onChange={(e) => setRewriteUseWebSearch(e.target.checked)}
+                    disabled={isRewriting}
+                  />
+                  <span>
+                    Autoriser la recherche web pour compléter les informations avec des sources récentes.
+                    <span className="block text-xs text-gray-500 mt-1">Peut rallonger légèrement la génération.</span>
+                  </span>
+                </label>
+
+                {rewriteError && (
+                  <div className="text-sm text-rose-600 bg-rose-50 border border-rose-200 px-3 py-2 rounded-lg">
+                    {rewriteError}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 flex items-center justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isRewriting) return;
+                    setShowRewriteModal(false);
+                    setRewriteError(null);
+                    setRewriteUseWebSearch(false);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRewriteContent}
+                  disabled={isRewriting}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition disabled:opacity-60"
+                >
+                  {isRewriting ? 'Réécriture…' : 'Réécrire maintenant'}
                 </button>
               </div>
             </div>

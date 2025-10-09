@@ -208,15 +208,21 @@ async function processQueueItem(queueItem, options) {
     if (infographicError || !infographic) {
       throw new Error(`Failed to fetch infographic: ${infographicError?.message || 'Infographic not found'}`);
     }
-    // If there's existing HTML and this is a regeneration with a comment, save current version to history
-    if (page.generated_html && queueItem.user_comment) {
+    // If there's existing HTML, always snapshot before regeneration
+    if (page.generated_html) {
       console.log('Saving current version to history before regeneration');
-      const { error: historyError } = await supabase.from('infographic_pages_history').insert({
-        infographic_page_id: page.id,
-        generated_html: page.generated_html,
-        user_comment: page.last_generation_comment || 'Initial generation',
-        user_id: queueItem.user_id
-      });
+      const historyComment =
+        queueItem.user_comment ||
+        page.last_generation_comment ||
+        'Snapshot before regeneration';
+      const { error: historyError } = await supabase
+        .from('infographic_pages_history')
+        .insert({
+          infographic_page_id: page.id,
+          generated_html: page.generated_html,
+          user_comment: historyComment,
+          user_id: queueItem.user_id
+        });
       if (historyError) {
         console.error('Failed to save to history:', historyError);
       }
@@ -348,7 +354,8 @@ Requirements:
 7. Follow the style guidelines provided
 8. Use appropriate icons, charts, or visual elements where relevant
 9. Ensure high contrast and readability
-10. The page should be self-contained (no external dependencies)${userComment ? `
+10. Focus primarily on the supplied page content; use the project context only as supporting tone or framing guidance.
+11. The page should be self-contained (no external dependencies)${userComment ? `
 11. IMPORTANT: Address the user's specific feedback: ${userComment}` : ''}`;
   const requestBody = {
     model: OPENAI_GENERATION_MODEL,
@@ -582,7 +589,7 @@ async function repairHtmlWithOpenAI(html, errors) {
         ],
       }
     ],
-    max_output_tokens: 4000,
+    max_output_tokens: 100000,
     text: {
       format: {
         type: 'json_schema',

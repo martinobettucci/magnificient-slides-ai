@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { Plus, X } from 'lucide-react';
-import { infographicsService } from '../../lib/supabase';
+import { infographicsService, InfographicPage } from '../../lib/supabase';
 
 interface PageFormModalProps {
   infographicId: string;
-  onSave: () => void;
+  nextPageOrder: number;
+  onSave: (page: InfographicPage) => void;
   onCancel: () => void;
 }
 
 export function PageFormModal({ 
   infographicId, 
+  nextPageOrder,
   onSave, 
   onCancel 
 }: PageFormModalProps) {
@@ -26,15 +28,15 @@ export function PageFormModal({
 
     try {
       setSaving(true);
-      await infographicsService.createPage({
+      const newPage = await infographicsService.createPage({
         infographic_id: infographicId,
         title: formData.title,
         content_markdown: formData.content_markdown,
-        page_order: 0,
+        page_order: nextPageOrder,
         generated_html: '',
         generation_hints: [],
       });
-      onSave();
+      onSave(newPage);
     } catch (err) {
       console.error('Failed to create page:', err);
     } finally {
