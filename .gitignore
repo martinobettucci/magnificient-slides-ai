@@ -29,3 +29,4 @@ dist-ssr
 
 # Local Supabase artifacts
 .supabase
+signing_keys.json

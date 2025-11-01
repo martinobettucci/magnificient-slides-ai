@@ -19,7 +19,8 @@
     "supabase:migration:new": "./scripts/supabase-migration-new.sh",
     "supabase:functions:serve": "./scripts/supabase-functions-serve.sh",
     "supabase:functions:deploy": "./scripts/supabase-functions-deploy.sh",
-    "supabase:export": "./scripts/supabase-export-deploy.sh"
+    "supabase:export": "./scripts/supabase-export-deploy.sh",
+    "supabase:jwt": "node ./scripts/generate-signing-key.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

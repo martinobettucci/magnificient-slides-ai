@@ -9,6 +9,59 @@ const OPENAI_FIX_MODEL = Deno.env.get('OPENAI_FIX_MODEL') ?? 'gpt-4o-mini-2024-0
 // Optional: maximum number of fix iterations, defaults to 5 if not set
 const MAX_HTML_FIX_ITER = Number(Deno.env.get('MAX_HTML_FIX_ITER') || 5);
 
+type ResponsesInputContent = {
+  type: 'input_text';
+  text: string;
+};
+
+type ResponsesMessageRole = 'system' | 'user' | 'assistant';
+
+interface ResponsesMessage {
+  role: ResponsesMessageRole;
+  content: ResponsesInputContent[];
+}
+
+interface JsonSchemaFormat {
+  type: 'json_schema';
+  name: string;
+  strict: boolean;
+  schema: Record<string, unknown>;
+}
+
+interface JsonObjectFormat {
+  type: 'json_object';
+}
+
+type ResponsesTextFormat = {
+  format: JsonSchemaFormat | JsonObjectFormat;
+};
+
+interface OpenAIResponsesRequest {
+  model: string;
+  input: ResponsesMessage[];
+  max_output_tokens?: number;
+  text?: ResponsesTextFormat;
+}
+
+interface OpenAIResponsePayload extends Record<string, unknown> {
+  status?: string;
+  incomplete_details?: {
+    reason?: string;
+    [key: string]: unknown;
+  };
+  output_text?: string | string[];
+  output?: Array<Record<string, unknown>>;
+  choices?: Array<Record<string, unknown>>;
+  refusal?: Record<string, unknown>;
+  error?: {
+    message?: string;
+    [key: string]: unknown;
+  };
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
 const extractResponseText = (payload: unknown): string | null => {
   if (!payload || typeof payload !== 'object') return null;
   const root = payload as Record<string, unknown>;
@@ -61,7 +114,7 @@ const extractRefusal = (payload: unknown): Record<string, unknown> | null => {
   const check = (entry: unknown): Record<string, unknown> | null => {
     if (!entry || typeof entry !== 'object') return null;
     const typed = entry as Record<string, unknown>;
-    if (typed.type === 'refusal' || typed.reason === 'refusal' || typeof (typed as any).refusal === 'string') {
+    if (typed.type === 'refusal' || typed.reason === 'refusal' || typeof typed.refusal === 'string') {
       return typed;
     }
     return null;
@@ -82,8 +135,8 @@ const extractRefusal = (payload: unknown): Record<string, unknown> | null => {
       }
     }
   }
-  if ((root as any).refusal && typeof (root as any).refusal === 'object') {
-    return (root as any).refusal as Record<string, unknown>;
+  if ('refusal' in root && isRecord(root.refusal)) {
+    return root.refusal;
   }
   return null;
 };
@@ -130,7 +183,7 @@ const corsHeaders = {
 /** -------------------------
  * OpenAI Responses API helpers (API-call ONLY fixes)
  * ------------------------- */
-async function callOpenAIResponses(body: any) {
+async function callOpenAIResponses(body: OpenAIResponsesRequest): Promise<OpenAIResponsePayload> {
   const res = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
@@ -146,8 +199,15 @@ async function callOpenAIResponses(body: any) {
     // Try to surface a helpful message
     let msg = raw;
     try {
-      const j = JSON.parse(raw);
-      msg = j?.error?.message || raw;
+      const parsedError = JSON.parse(raw);
+      if (
+        isRecord(parsedError) &&
+        'error' in parsedError &&
+        isRecord(parsedError.error) &&
+        typeof parsedError.error.message === 'string'
+      ) {
+        msg = parsedError.error.message;
+      }
     } catch {
       // ignore
     }
@@ -155,7 +215,11 @@ async function callOpenAIResponses(body: any) {
   }
 
   try {
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!isRecord(parsed)) {
+      throw new Error('OpenAI API returned a non-object payload');
+    }
+    return parsed as OpenAIResponsePayload;
   } catch {
     throw new Error('OpenAI API returned a non-JSON payload');
   }
@@ -165,18 +229,23 @@ async function callOpenAIResponses(body: any) {
  * Try primary request (json_schema). If the model rejects json_schema,
  * retry once with JSON mode (text.format = json_object) WITHOUT changing your prompts.
  */
-function buildJsonModeFallbackBody(primaryBody: any) {
-  const fallback = { ...primaryBody, text: undefined };
-  // Use JSON mode instead of schema; keep the same input/prompt
-  fallback.text = { format: { type: 'json_object' } };
-  return fallback;
+function buildJsonModeFallbackBody(primaryBody: OpenAIResponsesRequest): OpenAIResponsesRequest {
+  const { text: _text, ...rest } = primaryBody;
+  return {
+    ...rest,
+    text: {
+      format: {
+        type: 'json_object'
+      }
+    }
+  };
 }
 
-async function callOpenAIWithFallback(primaryBody: any) {
+async function callOpenAIWithFallback(primaryBody: OpenAIResponsesRequest) {
   try {
     return await callOpenAIResponses(primaryBody);
-  } catch (e: any) {
-    const msg = String(e?.message || '');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? String(error.message || '') : '';
     const looksLikeSchemaUnsupported =
       /json_schema/i.test(msg) ||
       /schema/i.test(msg) && /(unsupported|not supported|only available)/i.test(msg);
@@ -185,7 +254,7 @@ async function callOpenAIWithFallback(primaryBody: any) {
       const fb = buildJsonModeFallbackBody(primaryBody);
       return await callOpenAIResponses(fb);
     }
-    throw e;
+    throw error;
   }
 }
 
