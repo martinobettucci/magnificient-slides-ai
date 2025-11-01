@@ -5,7 +5,9 @@
 1. Generate a local JWT signing key once with `npm run supabase:jwt` (re-run with `npm run supabase:jwt -- --force` or `npm run supabase:jwt --force` to rotate).
 2. Ensure you are using the Node version from `.nvmrc` (`nvm use`).
 3. Install dependencies with `npm install`.
-4. Start the Vite dev server with `npm run dev`.
+4. Start the Supabase stack with `npm run supabase:start` and keep it running.
+5. Launch the edge functions with `npm run supabase:functions:serve` (runs in the background; stop later with `npm run supabase:functions:stop`).
+6. Start the Vite dev server with `npm run dev`.
 
 ## Local Supabase Development
 
@@ -23,6 +25,7 @@ This project uses Supabase for data and edge functions. The repository now inclu
 - `.env.local` (from the provided `.env.local.example`) should point Vite at the local API (`http://localhost:54321`) and use the anon key printed by `supabase start`. The service role key should **not** be exposed to the browser—keep it in CLI-only environments if you need it.
 - The Supabase CLI stores containers and generated secrets in the `.supabase/` directory (ignored by Git).
 - The first time you clone the project, run `npm run supabase:jwt` **before** `npm run supabase:start`. This creates `signing_keys.json`, which Supabase Auth uses for a stable JWT signing secret.
+- Keep `npm run supabase:start` active and run `npm run supabase:functions:serve` after it finishes starting so the AI edge functions are reachable. Stop the functions with `npm run supabase:functions:stop` when you're done.
 
 ### Edge Function Secrets
 
@@ -51,6 +54,7 @@ VERIFY_JWT=false
 ### Common Commands
 
 - `npm run supabase:jwt` – generate or rotate the local Auth signing key (creates `signing_keys.json`).
+- `npm run supabase:functions:stop` – stop the background edge function server and clean up the PID file.
 
 The `scripts/` directory provides thin wrappers around the Supabase CLI so the
 correct Node/NVM environment is always used. Each script also has a matching
@@ -67,6 +71,7 @@ correct Node/NVM environment is always used. Each script also has a matching
 | `scripts/supabase-db-seed.sh`          | `npm run supabase:db:seed`          | Run seed scripts                                    |
 | `scripts/supabase-migration-new.sh`    | `npm run supabase:migration:new`    | Scaffold a new migration                            |
 | `scripts/supabase-functions-serve.sh`  | `npm run supabase:functions:serve`  | Serve edge functions locally                        |
+| `scripts/supabase-functions-stop.sh`   | `npm run supabase:functions:stop`   | Stop the background edge function server            |
 | `scripts/supabase-functions-deploy.sh` | `npm run supabase:functions:deploy` | Deploy edge functions                               |
 | `scripts/supabase-export-deploy.sh`    | `npm run supabase:export`           | Generate `/deploy` bundle with compose/env template |
 

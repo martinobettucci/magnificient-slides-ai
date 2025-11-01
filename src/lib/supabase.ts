@@ -21,6 +21,26 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+const requireAccessToken = async (): Promise<string> => {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    throw new Error(error.message || 'Failed to retrieve Supabase session');
+  }
+  const token = data?.session?.access_token;
+  if (!token) {
+    throw new Error('User not authenticated');
+  }
+  return token;
+};
+
+const buildFunctionHeaders = async (extra: Record<string, string> = {}) => {
+  const accessToken = await requireAccessToken();
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    ...extra,
+  };
+};
+
 // Auth functions
 export const authService = {
   async getCurrentUser() {
@@ -285,12 +305,12 @@ export const infographicsService = {
     }
 
     const apiUrl = `${supabaseUrl}/functions/v1/rewrite-page`;
+    const headers = await buildFunctionHeaders({
+      'Content-Type': 'application/json',
+    });
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${supabaseAnonKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         projectName: params.projectName,
         projectDescription: params.projectDescription,
@@ -358,10 +378,9 @@ export const infographicsService = {
 
     const response = await fetch(`${supabaseUrl}/functions/v1/suggest-hints`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${supabaseAnonKey}`,
+      headers: await buildFunctionHeaders({
         'Content-Type': 'application/json',
-      },
+      }),
       body: JSON.stringify(payload),
     });
 
@@ -532,12 +551,13 @@ export const infographicsService = {
       console.log('Triggering queue worker at:', apiUrl);
       
       // Fire and forget - don't wait for completion
+      const headers = await buildFunctionHeaders({
+        'Content-Type': 'application/json',
+      });
+
       fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ action: 'process-once' }),
       }).catch(error => {
         console.warn('Queue worker request failed (background job):', error.message);
@@ -574,13 +594,13 @@ export const infographicsService = {
       
       const apiUrl = `${supabaseUrl}/functions/v1/suggest-style-guidelines`;
       console.log('Making request to:', apiUrl);
+      const headers = await buildFunctionHeaders({
+        'Content-Type': 'application/json',
+      });
       
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(requestPayload),
       });
 

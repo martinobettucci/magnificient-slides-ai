@@ -18,6 +18,7 @@
     "supabase:db:seed": "./scripts/supabase-db-seed.sh",
     "supabase:migration:new": "./scripts/supabase-migration-new.sh",
     "supabase:functions:serve": "./scripts/supabase-functions-serve.sh",
+    "supabase:functions:stop": "./scripts/supabase-functions-stop.sh",
     "supabase:functions:deploy": "./scripts/supabase-functions-deploy.sh",
     "supabase:export": "./scripts/supabase-export-deploy.sh",
     "supabase:jwt": "node ./scripts/generate-signing-key.mjs"
