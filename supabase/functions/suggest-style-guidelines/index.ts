@@ -1,79 +1,9 @@
+import { OpenAIJsonClient } from '../_shared/openai-json.ts';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 // Use a snapshot that supports json_schema strict mode
 const OPENAI_ANALYSIS_MODEL = Deno.env.get('OPENAI_ANALYSIS_MODEL') ?? 'gpt-4o-2024-08-06';
 
-const extractResponseText = (payload) => {
-  if (!payload || typeof payload !== 'object') return null;
-  const root = payload;
-
-  // 1) Direct convenience field from Responses API
-  if (typeof root.output_text === 'string' && root.output_text.trim()) {
-    return root.output_text;
-  }
-  if (Array.isArray(root.output_text)) {
-    for (const item of root.output_text) {
-      if (typeof item === 'string' && item.trim()) return item;
-    }
-  }
-
-  // 2) Canonical content layout
-  if (Array.isArray(root.output)) {
-    for (const msg of root.output) {
-      if (!msg || typeof msg !== 'object') continue;
-      const content = msg.content;
-      if (Array.isArray(content)) {
-        for (const chunk of content) {
-          if (!chunk || typeof chunk !== 'object') continue;
-          // In Responses API, the textual chunk appears as { type: 'output_text', text: '...' }
-          if (typeof chunk.text === 'string' && chunk.text.trim()) {
-            return chunk.text;
-          }
-        }
-      }
-    }
-  }
-
-  // 3) Legacy Chat Completions compatibility
-  if (Array.isArray(root.choices) && root.choices.length > 0) {
-    const first = root.choices[0];
-    if (first && typeof first === 'object' && first.message && typeof first.message === 'object') {
-      const legacyText = first.message.content;
-      if (typeof legacyText === 'string' && legacyText.trim()) {
-        return legacyText;
-      }
-    }
-  }
-
-  return null;
-};
-
-const extractRefusal = (payload) => {
-  if (!payload || typeof payload !== 'object') return null;
-  const root = payload;
-
-  const isRefusal = (entry) => {
-    if (!entry || typeof entry !== 'object') return null;
-    if (entry.type === 'refusal') return entry;
-    if (entry.reason === 'refusal') return entry;
-    if (typeof entry.refusal === 'string' && entry.refusal.trim()) return entry;
-    return null;
-  };
-
-  if (Array.isArray(root.output)) {
-    for (const msg of root.output) {
-      const direct = isRefusal(msg);
-      if (direct) return direct;
-      if (msg && typeof msg === 'object' && Array.isArray(msg.content)) {
-        for (const part of msg.content) {
-          const nested = isRefusal(part);
-          if (nested) return nested;
-        }
-      }
-    }
-  }
-  if (root.refusal && typeof root.refusal === 'object') return root.refusal;
-  return null;
-};
+// Using shared OpenAI client; no local response parsing needed
 
 // Build a flattened recommendations list from the structured response fields
 const buildRecommendations = (p) => {
@@ -219,123 +149,61 @@ Create detailed style guidelines that help AI generate beautiful, consistent inf
 6. Responsive Design, guidelines by breakpoint
 7. Accessibility, color contrast and readability`;
 
-    const requestBody = {
-      model: OPENAI_ANALYSIS_MODEL,
-      input: [
-        {
-          role: 'system',
-          content: [
-            {
-              type: 'input_text',
-              text: 'You are an expert UI/UX designer who creates comprehensive, actionable style guidelines for infographic projects. Always provide specific, detailed recommendations.'
-            }
-          ]
-        },
-        {
-          role: 'user',
-          content: [{ type: 'input_text', text: prompt }]
-        }
-      ],
-      max_output_tokens: 2000,
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'style_guidelines',
-          strict: true,
-          schema: {
-            type: 'object',
-            properties: {
-              styleGuidelines: {
-                type: 'string',
-                description: 'Comprehensive style guidelines for the infographic project'
-              },
-              colorPalette: {
-                type: 'object',
-                properties: {
-                  primary: { type: 'string', description: 'Primary color hex code' },
-                  secondary: { type: 'string', description: 'Secondary color hex code' },
-                  accent: { type: 'string', description: 'Accent color hex code' },
-                  neutral: { type: 'string', description: 'Neutral color hex code' },
-                  background: { type: 'string', description: 'Background color hex code' }
-                },
-                required: ['primary', 'secondary', 'accent', 'neutral', 'background'],
-                additionalProperties: false
-              },
-              typography: {
-                type: 'object',
-                properties: {
-                  headingFont: { type: 'string', description: 'Font family for headings' },
-                  bodyFont: { type: 'string', description: 'Font family for body text' },
-                  fontSizes: {
-                    type: 'object',
-                    properties: {
-                      h1: { type: 'string', description: 'H1 font size' },
-                      h2: { type: 'string', description: 'H2 font size' },
-                      h3: { type: 'string', description: 'H3 font size' },
-                      body: { type: 'string', description: 'Body text font size' }
-                    },
-                    required: ['h1', 'h2', 'h3', 'body'],
-                    additionalProperties: false
-                  }
-                },
-                required: ['headingFont', 'bodyFont', 'fontSizes'],
-                additionalProperties: false
-              }
-            },
-            required: ['styleGuidelines', 'colorPalette', 'typography'],
-            additionalProperties: false
-          }
-        }
-      }
-    };
-
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      return new Response(
-        JSON.stringify({
-          error: `OpenAI API error: ${response.status}`,
-          details: `OpenAI API returned ${response.status} (${response.statusText}): ${errorData}`
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const data = await response.json();
-
-    if (data?.status === 'incomplete') {
-      const reason = data?.incomplete_details?.reason ?? 'unknown';
-      return new Response(
-        JSON.stringify({ error: 'OpenAI response incomplete', details: reason }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const refusal = extractRefusal(data);
-    if (refusal) {
-      return new Response(
-        JSON.stringify({ error: 'OpenAI refused to generate style guidelines', details: refusal }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const responseContent = extractResponseText(data) ?? '';
     let parsedResponse;
     try {
-      parsedResponse = JSON.parse(responseContent);
+      const client = new OpenAIJsonClient({ apiKey: OPENAI_API_KEY, defaultModel: OPENAI_ANALYSIS_MODEL });
+      parsedResponse = await client.generateJSON({
+        system:
+          'You are an expert UI/UX designer who creates comprehensive, actionable style guidelines for infographic projects. Always provide specific, detailed recommendations.',
+        user: prompt,
+        schemaName: 'style_guidelines',
+        schema: {
+          type: 'object',
+          properties: {
+            styleGuidelines: { type: 'string', description: 'Comprehensive style guidelines for the infographic project' },
+            colorPalette: {
+              type: 'object',
+              properties: {
+                primary: { type: 'string', description: 'Primary color hex code' },
+                secondary: { type: 'string', description: 'Secondary color hex code' },
+                accent: { type: 'string', description: 'Accent color hex code' },
+                neutral: { type: 'string', description: 'Neutral color hex code' },
+                background: { type: 'string', description: 'Background color hex code' }
+              },
+              required: ['primary', 'secondary', 'accent', 'neutral', 'background'],
+              additionalProperties: false
+            },
+            typography: {
+              type: 'object',
+              properties: {
+                headingFont: { type: 'string', description: 'Font family for headings' },
+                bodyFont: { type: 'string', description: 'Font family for body text' },
+                fontSizes: {
+                  type: 'object',
+                  properties: {
+                    h1: { type: 'string', description: 'H1 font size' },
+                    h2: { type: 'string', description: 'H2 font size' },
+                    h3: { type: 'string', description: 'H3 font size' },
+                    body: { type: 'string', description: 'Body text font size' }
+                  },
+                  required: ['h1', 'h2', 'h3', 'body'],
+                  additionalProperties: false
+                }
+              },
+              required: ['headingFont', 'bodyFont', 'fontSizes'],
+              additionalProperties: false
+            }
+          },
+          required: ['styleGuidelines', 'colorPalette', 'typography'],
+          additionalProperties: false
+        },
+        maxOutputTokens: 2000,
+      });
     } catch (parseError) {
       return new Response(
         JSON.stringify({
           error: 'Failed to parse AI response',
-          details: `JSON parsing failed: ${parseError.message}`
+          details: `${parseError.name}: ${parseError.message}`
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.53.0';
+import { OpenAIJsonClient } from '../_shared/openai-json.ts';
 
 //import puppeteer from 'npm:puppeteer@22.12.1';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -183,80 +184,7 @@ const corsHeaders = {
 /** -------------------------
  * OpenAI Responses API helpers (API-call ONLY fixes)
  * ------------------------- */
-async function callOpenAIResponses(body: OpenAIResponsesRequest): Promise<OpenAIResponsePayload> {
-  const res = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  });
-
-  const raw = await res.text();
-
-  if (!res.ok) {
-    // Try to surface a helpful message
-    let msg = raw;
-    try {
-      const parsedError = JSON.parse(raw);
-      if (
-        isRecord(parsedError) &&
-        'error' in parsedError &&
-        isRecord(parsedError.error) &&
-        typeof parsedError.error.message === 'string'
-      ) {
-        msg = parsedError.error.message;
-      }
-    } catch {
-      // ignore
-    }
-    throw new Error(`OpenAI API error (${res.status}): ${msg}`);
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (!isRecord(parsed)) {
-      throw new Error('OpenAI API returned a non-object payload');
-    }
-    return parsed as OpenAIResponsePayload;
-  } catch {
-    throw new Error('OpenAI API returned a non-JSON payload');
-  }
-}
-
-/**
- * Try primary request (json_schema). If the model rejects json_schema,
- * retry once with JSON mode (text.format = json_object) WITHOUT changing your prompts.
- */
-function buildJsonModeFallbackBody(primaryBody: OpenAIResponsesRequest): OpenAIResponsesRequest {
-  const { text: _text, ...rest } = primaryBody;
-  return {
-    ...rest,
-    text: {
-      format: {
-        type: 'json_object'
-      }
-    }
-  };
-}
-
-async function callOpenAIWithFallback(primaryBody: OpenAIResponsesRequest) {
-  try {
-    return await callOpenAIResponses(primaryBody);
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? String(error.message || '') : '';
-    const looksLikeSchemaUnsupported =
-      /json_schema/i.test(msg) ||
-      /schema/i.test(msg) && /(unsupported|not supported|only available)/i.test(msg);
-
-    if (looksLikeSchemaUnsupported) {
-      const fb = buildJsonModeFallbackBody(primaryBody);
-      return await callOpenAIResponses(fb);
-    }
-    throw error;
-  }
-}
+// Using shared OpenAI client; no local call/fallback helpers needed
 
 // UPDATED: Added options parameter to pass down validation flags
 async function processQueueItem(queueItem, options) {
@@ -426,15 +354,10 @@ Requirements:
 10. Focus primarily on the supplied page content; use the project context only as supporting tone or framing guidance.
 11. The page should be self-contained (no external dependencies)${userComment ? `
 11. IMPORTANT: Address the user's specific feedback: ${userComment}` : ''}`;
-  const requestBody = {
+  const client = new OpenAIJsonClient({ apiKey: OPENAI_API_KEY, defaultModel: OPENAI_GENERATION_MODEL });
+  const result = await client.generateJSON<{ generatedHtml: string }>({
     model: OPENAI_GENERATION_MODEL,
-    input: [
-      {
-        role: 'system',
-        content: [
-          {
-            type: 'input_text',
-            text: `You are an expert infographic & data-visualization designer.
+    system: `You are an expert infographic & data-visualization designer.
 
 Output MUST be valid JSON following the provided schema, where \`generatedHtml\` contains a full, production-ready HTML5 document.
 
@@ -453,62 +376,21 @@ Design guidelines:
 • Never badd an external link to a ressource, under any circonstance: the page must be self contained.
 • Make sure the page renders correctly when opened directly in a browser.
 • Make sure the page always ends with a footer mentionning "Presentation made by InfogrAIphics by P2Enjoy SAS - Copyright 2025"`,
-          },
-        ],
+    user: prompt,
+    schemaName: 'infographic_html',
+    schema: {
+      type: 'object',
+      properties: {
+        generatedHtml: { type: 'string', description: 'Complete HTML page with embedded CSS for the infographic' },
       },
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text: prompt,
-          },
-        ],
-      },
-    ],
-    max_output_tokens: 100000,
-    text: {
-      format: {
-        type: 'json_schema',
-        name: 'infographic_html',
-        strict: true,
-        schema: {
-          type: 'object',
-          properties: {
-            generatedHtml: {
-              type: 'string',
-              description: 'Complete HTML page with embedded CSS for the infographic'
-            }
-          },
-          required: [
-            'generatedHtml'
-          ],
-          additionalProperties: false
-        }
-      }
-    }
-  };
+      required: ['generatedHtml'],
+      additionalProperties: false,
+    },
+    maxOutputTokens: 100000,
+  });
 
-  // API call with graceful fallback if the model rejects json_schema
-  const data = await callOpenAIWithFallback(requestBody);
-
-  if (data?.status === 'incomplete') {
-    const reason = data?.incomplete_details?.reason ?? 'unknown';
-    throw new Error(`OpenAI response incomplete: ${reason}`);
-  }
-  const refusal = extractRefusal(data);
-  if (refusal) {
-    throw new Error(`OpenAI refused the request: ${JSON.stringify(refusal)}`);
-  }
-  const responseContent = extractResponseText(data) ?? '';
-  if (!responseContent) {
-    throw new Error('No response content from OpenAI');
-  }
-  const parsedResponse = JSON.parse(responseContent);
-  if (!parsedResponse.generatedHtml) {
-    throw new Error('No HTML content generated by AI');
-  }
-  return parsedResponse.generatedHtml;
+  if (!result.generatedHtml) throw new Error('No HTML content generated by AI');
+  return result.generatedHtml;
 }
 /*
 async function validateJavaScriptAndLoading(html) {
@@ -616,91 +498,43 @@ function truncateForPrompt(messages, maxChars = 6000) {
 }
 async function repairHtmlWithOpenAI(html, errors) {
   const errorBlob = truncateForPrompt(errors);
-  const requestBody = {
+  const client = new OpenAIJsonClient({ apiKey: OPENAI_API_KEY, defaultModel: OPENAI_FIX_MODEL });
+  const result = await client.generateJSON<{ fixedHtml: string }>({
     model: OPENAI_FIX_MODEL,
-    input: [
-      {
-        role: 'system',
-        content: [
-          {
-            type: 'input_text',
-            text: [
-              'You are a senior HTML correctness agent.',
-              'Your job is to fix only the concrete validator errors provided.',
-              'The errors can be HTML syntax errors from a W3C validator, JavaScript runtime errors, or resource loading errors (e.g., 404s).',
-              'ONLY FIX THE ERROR AND DO NOT CHANGE ANYTHING ELSE.',
-              'If you see a JavaScript error, analyze the script and fix the bug.',
-              'If you see a loading error (e.g. 404), correct the resource URL. If it\'s an image from a service like Pexels, find a valid replacement URL on the same topic.',
-              'Preserve content, structure, order, classes, ids, inline scripts and styles.',
-              'Do not add or remove elements unless strictly necessary to resolve an error.',
-              'Do not introduce external resources',
-              'Do not reformat whitespace except where required by the fix.',
-              'Return valid JSON that matches the schema with the single field fixedHtml.'
-            ].join('\n'),
-          },
-        ],
-      },
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text: [
-              'Here is the current HTML to fix:',
-              '---HTML START---',
-              html,
-              '---HTML END---',
-              '',
-              'Here are the validator errors you must address exactly and only:',
-              errorBlob
-            ].join('\n'),
-          },
-        ],
-      }
-    ],
-    max_output_tokens: 100000,
-    text: {
-      format: {
-        type: 'json_schema',
-        name: 'html_fix',
-        strict: true,
-        schema: {
-          type: 'object',
-          properties: {
-            fixedHtml: {
-              type: 'string',
-              description: 'The minimally fixed HTML string'
-            }
-          },
-          required: [
-            'fixedHtml'
-          ],
-          additionalProperties: false
-        }
-      }
-    }
-  };
+    system: [
+      'You are a senior HTML correctness agent.',
+      'Your job is to fix only the concrete validator errors provided.',
+      'The errors can be HTML syntax errors from a W3C validator, JavaScript runtime errors, or resource loading errors (e.g., 404s).',
+      'ONLY FIX THE ERROR AND DO NOT CHANGE ANYTHING ELSE.',
+      'If you see a JavaScript error, analyze the script and fix the bug.',
+      'If you see a loading error (e.g. 404), correct the resource URL. If it\'s an image from a service like Pexels, find a valid replacement URL on the same topic.',
+      'Preserve content, structure, order, classes, ids, inline scripts and styles.',
+      'Do not add or remove elements unless strictly necessary to resolve an error.',
+      'Do not introduce external resources',
+      'Do not reformat whitespace except where required by the fix.',
+      'Return valid JSON that matches the schema with the single field fixedHtml.'
+    ].join('\n'),
+    user: [
+      'Here is the current HTML to fix:',
+      '---HTML START---',
+      html,
+      '---HTML END---',
+      '',
+      'Here are the validator errors you must address exactly and only:',
+      errorBlob
+    ].join('\n'),
+    schemaName: 'html_fix',
+    schema: {
+      type: 'object',
+      properties: { fixedHtml: { type: 'string', description: 'The minimally fixed HTML string' } },
+      required: ['fixedHtml'],
+      additionalProperties: false,
+    },
+    maxOutputTokens: 100000,
+  });
 
-  // API call with graceful fallback if the model rejects json_schema
-  const data = await callOpenAIWithFallback(requestBody);
-
-  if (data?.status === 'incomplete') {
-    const reason = data?.incomplete_details?.reason ?? 'unknown';
-    throw new Error(`OpenAI fixer response incomplete: ${reason}`);
-  }
-  const refusal = extractRefusal(data);
-  if (refusal) {
-    throw new Error(`OpenAI fixer refused the request: ${JSON.stringify(refusal)}`);
-  }
-  const content = extractResponseText(data) ?? '';
-  if (!content) {
-    throw new Error('No response content from OpenAI fixer');
-  }
-  const parsed = JSON.parse(content);
-  if (!parsed.fixedHtml) {
-    throw new Error('Fixer did not return fixedHtml');
-  }
-  return parsed.fixedHtml;
+  if (!result.fixedHtml) throw new Error('Fixer did not return fixedHtml');
+  return result.fixedHtml;
 }
 // UPDATED: This function now accepts options to conditionally run validation steps.
 async function validateAndRepairHtmlLoop(initialHtml, options) {

@@ -1,87 +1,11 @@
 import { z } from 'npm:zod@3.23.8';
 import { corsHeaders } from '../_shared/cors.ts';
+import { OpenAIJsonClient } from '../_shared/openai-json.ts';
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 const OPENAI_ANALYSIS_MODEL = Deno.env.get('OPENAI_ANALYSIS_MODEL') ?? 'gpt-4o';
 
-const extractResponseText = (payload: unknown): string | null => {
-  if (!payload || typeof payload !== 'object') return null;
-  const root = payload as Record<string, unknown>;
-  const outputText = root.output_text;
-  if (typeof outputText === 'string' && outputText.trim().length > 0) {
-    return outputText;
-  }
-  if (Array.isArray(outputText)) {
-    for (const item of outputText) {
-      if (typeof item === 'string' && item.trim().length > 0) {
-        return item;
-      }
-    }
-  }
-  const output = root.output;
-  if (Array.isArray(output)) {
-    for (const item of output) {
-      if (!item || typeof item !== 'object') continue;
-      const content = (item as Record<string, unknown>).content;
-      if (Array.isArray(content)) {
-        for (const chunk of content) {
-          if (!chunk || typeof chunk !== 'object') continue;
-          const text = (chunk as Record<string, unknown>).text;
-          if (typeof text === 'string' && text.trim().length > 0) {
-            return text;
-          }
-        }
-      }
-    }
-  }
-  const choices = root.choices;
-  if (Array.isArray(choices) && choices.length > 0) {
-    const first = choices[0];
-    if (first && typeof first === 'object') {
-      const message = (first as Record<string, unknown>).message;
-      if (message && typeof message === 'object') {
-        const legacyText = (message as Record<string, unknown>).content;
-        if (typeof legacyText === 'string' && legacyText.trim().length > 0) {
-          return legacyText;
-        }
-      }
-    }
-  }
-  return null;
-};
-
-const extractRefusal = (payload: unknown): Record<string, unknown> | null => {
-  if (!payload || typeof payload !== 'object') return null;
-  const root = payload as Record<string, unknown>;
-  const check = (entry: unknown): Record<string, unknown> | null => {
-    if (!entry || typeof entry !== 'object') return null;
-    const typed = entry as Record<string, unknown>;
-    if (typed.type === 'refusal' || typed.reason === 'refusal') {
-      return typed;
-    }
-    return null;
-  };
-  const output = root.output;
-  if (Array.isArray(output)) {
-    for (const item of output) {
-      const direct = check(item);
-      if (direct) return direct;
-      if (item && typeof item === 'object') {
-        const content = (item as Record<string, unknown>).content;
-        if (Array.isArray(content)) {
-          for (const part of content) {
-            const nested = check(part);
-            if (nested) return nested;
-          }
-        }
-      }
-    }
-  }
-  if (root.refusal && typeof root.refusal === 'object') {
-    return root.refusal as Record<string, unknown>;
-  }
-  return null;
-};
+// Using shared OpenAI client; no local response parsing needed
 
 const GENERATION_HINT_OPTIONS = [
   {
@@ -320,129 +244,41 @@ const handleRequest = async (req: Request): Promise<Response> => {
     maxSuggestions: limit,
   });
 
-  const requestBody = {
-    model: OPENAI_ANALYSIS_MODEL,
-    input: [
-      {
-        role: 'system',
-        content: [
-          {
-            type: 'input_text',
-            text:
-              'You recommend slide-generation hints. Only respond with allowed hint values, provide rationales, and confidence levels. The output must strictly follow the provided JSON schema.',
-          },
-        ],
-      },
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text: prompt,
-          },
-        ],
-      },
-    ],
-    max_output_tokens: 1200,
-    text: {
-      format: {
-        type: 'json_schema',
-        name: 'hint_suggestions',
-        strict: true,
-        schema: {
-          type: 'object',
-          properties: {
-            hints: {
-              type: 'array',
-              maxItems: 5,
-              items: {
-                type: 'object',
-                properties: {
-                  value: { type: 'string', enum: HintEnum.options },
-                  rationale: { type: 'string' },
-                  confidence: {
-                    type: 'string',
-                    enum: ConfidenceEnum.options,
-                    default: 'medium',
-                  },
-                },
-                required: ['value', 'rationale', 'confidence'],
-                additionalProperties: false,
+  let parsedResponse: unknown;
+  try {
+    const client = new OpenAIJsonClient({ apiKey: OPENAI_API_KEY, defaultModel: OPENAI_ANALYSIS_MODEL });
+    parsedResponse = await client.generateJSON({
+      system:
+        'You recommend slide-generation hints. Only respond with allowed hint values, provide rationales, and confidence levels. The output must strictly follow the provided JSON schema.',
+      user: prompt,
+      schemaName: 'hint_suggestions',
+      schema: {
+        type: 'object',
+        properties: {
+          hints: {
+            type: 'array',
+            maxItems: 5,
+            items: {
+              type: 'object',
+              properties: {
+                value: { type: 'string', enum: HintEnum.options },
+                rationale: { type: 'string' },
+                confidence: { type: 'string', enum: ConfidenceEnum.options, default: 'medium' },
               },
+              required: ['value', 'rationale', 'confidence'],
+              additionalProperties: false,
             },
           },
-          required: ['hints'],
-          additionalProperties: false,
         },
+        required: ['hints'],
+        additionalProperties: false,
       },
-    },
-  };
-
-  let completion;
-  try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
+      maxOutputTokens: 1200,
+      model: OPENAI_ANALYSIS_MODEL,
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenAI API error:', response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: 'Failed to generate hint suggestions', details: errorText }),
-        {
-          status: 502,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      );
-    }
-
-    completion = await response.json();
   } catch (error) {
     console.error('OpenAI request failed:', error);
     return new Response(JSON.stringify({ error: 'OpenAI request failed' }), {
-      status: 502,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  if (completion?.status === 'incomplete') {
-    const reason = completion?.incomplete_details?.reason ?? 'unknown';
-    console.error('OpenAI response incomplete', reason);
-    return new Response(JSON.stringify({ error: `OpenAI response incomplete: ${reason}` }), {
-      status: 502,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  const refusal = extractRefusal(completion);
-  if (refusal) {
-    console.error('OpenAI refused to provide hint suggestions', refusal);
-    return new Response(JSON.stringify({ error: 'OpenAI refused to provide hint suggestions', details: refusal }), {
-      status: 502,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  const rawContent = extractResponseText(completion);
-  if (typeof rawContent !== 'string') {
-    console.error('OpenAI response missing content', completion);
-    return new Response(JSON.stringify({ error: 'Invalid response from OpenAI' }), {
-      status: 502,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  let parsedResponse: unknown;
-  try {
-    parsedResponse = JSON.parse(rawContent);
-  } catch (error) {
-    console.error('Failed to parse OpenAI content as JSON', rawContent);
-    return new Response(JSON.stringify({ error: 'Malformed OpenAI response payload' }), {
       status: 502,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
