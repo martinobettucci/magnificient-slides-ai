@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { infographicsService, InfographicPage } from '../../lib/supabase';
+import { MarkdownEditor } from './MarkdownEditor';
 
 interface PageFormModalProps {
   infographicId: string;
@@ -67,18 +68,20 @@ export function PageFormModal({
               placeholder="Enter page title"
               required
             />
+            <p className="text-xs text-gray-500 mt-2">
+              Markdown is stripped from the title on save.
+            </p>
           </div>
           
           <div>
             <label className="block text-sm font-semibold text-gray-800 mb-3">
               Initial Content (Optional)
             </label>
-            <textarea
+            <MarkdownEditor
               value={formData.content_markdown}
-              onChange={(e) => setFormData(prev => ({ ...prev, content_markdown: e.target.value }))}
-              rows={5}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-gray-50 focus:bg-white resize-none"
+              onChange={(value) => setFormData((prev) => ({ ...prev, content_markdown: value }))}
               placeholder="Enter initial content in Markdown..."
+              minHeight={160}
             />
           </div>
           

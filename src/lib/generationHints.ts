@@ -16,6 +16,11 @@ export const GENERATION_HINT_OPTIONS = [
     description: 'Crée une slide de rupture audacieuse pour annoncer la prochaine partie.',
   },
   {
+    value: 'section_title',
+    label: 'Titre de section',
+    description: 'Une page titre seule, très stylisée, pour introduire une partie (pas de corps de texte).',
+  },
+  {
     value: 'dashboard',
     label: 'Dashboard',
     description: 'Mets en scène des KPIs et graphiques percutants avec une hiérarchie nette.',

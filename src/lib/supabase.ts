@@ -5,6 +5,7 @@ import {
   GenerationHintValue,
   GENERATION_HINT_CONFIDENCE,
 } from './generationHints';
+import { stripMarkdown } from './markdown';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -254,6 +255,7 @@ export const infographicsService = {
       .from('infographic_pages')
       .insert({
         ...page,
+        title: stripMarkdown(page.title).trim(),
         generation_hints: sanitizeHints(page.generation_hints),
       })
       .select()
@@ -265,6 +267,9 @@ export const infographicsService = {
 
   async updatePage(id: string, updates: Partial<Omit<InfographicPage, 'id' | 'created_at' | 'updated_at'>>) {
     const payload: Record<string, unknown> = { ...updates };
+    if (typeof updates.title === 'string') {
+      payload.title = stripMarkdown(updates.title).trim();
+    }
     if (Object.prototype.hasOwnProperty.call(updates, 'generation_hints')) {
       payload.generation_hints = sanitizeHints(updates.generation_hints as string[]);
     }

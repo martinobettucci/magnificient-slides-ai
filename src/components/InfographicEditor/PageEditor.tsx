@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Code, Eye, Save, Sparkles, History, ChevronDown, MessageSquare, RotateCcw, Plus, X, Wand2 } from 'lucide-react';
 import { infographicsService, Infographic, InfographicPage, InfographicPageHistory } from '../../lib/supabase';
+import { MarkdownEditor } from './MarkdownEditor';
 import {
   GENERATION_HINT_OPTIONS,
   GenerationHintValue,
@@ -553,6 +554,9 @@ export function PageEditor({
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white shadow-sm"
               />
+              <p className="text-xs text-gray-500 mt-2">
+                Markdown is stripped from the title on save.
+              </p>
             </div>
             <div className="mt-6">
               <div className="flex items-center justify-between mb-3">
@@ -635,11 +639,11 @@ export function PageEditor({
               <label className="block text-sm font-semibold text-gray-800 mb-3">
                 Content (Markdown)
               </label>
-              <textarea
+              <MarkdownEditor
                 value={formData.content_markdown}
-                onChange={(e) => setFormData(prev => ({ ...prev, content_markdown: e.target.value }))}
-                className="flex-1 w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm transition-all bg-white shadow-sm resize-none min-h-0 h-full"
+                onChange={(value) => setFormData((prev) => ({ ...prev, content_markdown: value }))}
                 placeholder="Enter your content in Markdown format..."
+                className="flex-1 min-h-0"
               />
             </div>
           </div>

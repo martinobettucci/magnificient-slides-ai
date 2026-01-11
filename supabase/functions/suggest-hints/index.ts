@@ -25,6 +25,11 @@ const GENERATION_HINT_OPTIONS = [
     description: 'Design a bold transition slide that signals a new chapter with minimal text and strong visuals.',
   },
   {
+    value: 'section_title',
+    label: 'Section Title',
+    description: 'A title-only section opener: one strong heading, optional short kicker, no body content.',
+  },
+  {
     value: 'dashboard',
     label: 'Dashboard',
     description: 'Highlight metrics with charts and key figures using clear hierarchy, legends, and annotations.',
@@ -137,11 +142,8 @@ const GENERATION_HINT_OPTIONS = [
 ] as const;
 
 type GenerationHintValue = (typeof GENERATION_HINT_OPTIONS)[number]['value'];
-const HINT_VALUES = GENERATION_HINT_OPTIONS.map((hint) => hint.value) as [
-  GenerationHintValue,
-  ...GenerationHintValue[]
-];
-const HintEnum = z.enum(HINT_VALUES);
+const HINT_VALUES = GENERATION_HINT_OPTIONS.map((hint) => hint.value);
+const HintEnum = z.enum(HINT_VALUES as [GenerationHintValue, ...GenerationHintValue[]]);
 const ConfidenceEnum = z.enum(['low', 'medium', 'high']);
 
 const requestSchema = z.object({

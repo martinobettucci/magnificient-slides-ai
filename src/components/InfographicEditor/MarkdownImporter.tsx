@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Upload, FileText, X, Plus, Hash } from 'lucide-react';
 import { infographicsService } from '../../lib/supabase';
+import { splitMarkdown, MarkdownSegment } from '../../lib/markdownSplit';
 
 interface MarkdownImporterProps {
   infographicId: string;
@@ -21,68 +22,60 @@ export function MarkdownImporter({ infographicId, onImport, onCancel }: Markdown
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const parseMarkdown = (content: string, level: number): ParsedPage[] => {
-    if (!content.trim()) return [];
-
+  const stripEmptyHeadingLines = (content: string) => {
+    if (!content.trim()) return '';
     const lines = content.split('\n');
-    const pages: ParsedPage[] = [];
-    let currentPage: ParsedPage | null = null;
-    let currentContent: string[] = [];
-
-    const headingRegex = new RegExp(`^#{1,${level}}\\s+(.+)$`);
-    const targetLevelRegex = new RegExp(`^#{${level}}\\s+(.+)$`);
+    const cleaned: string[] = [];
+    let inFence = false;
 
     for (const line of lines) {
-      const headingMatch = line.match(headingRegex);
-      
-      if (headingMatch) {
-        const headingLevel = line.match(/^#+/)?.[0].length || 0;
-        
-        // If this is our target level, start a new page
-        if (headingLevel === level) {
-          // Save previous page if it exists
-          if (currentPage) {
-            currentPage.content = currentContent.join('\n').trim();
-            if (currentPage.title || currentPage.content) {
-              pages.push(currentPage);
-            }
-          }
-          
-          // Start new page
-          currentPage = {
-            title: headingMatch[1].trim(),
-            content: '',
-            level: headingLevel
-          };
-          currentContent = [];
-        } else {
-          // Add this heading to current page content
-          currentContent.push(line);
+      if (/^\s*```/.test(line)) {
+        inFence = !inFence;
+        cleaned.push(line);
+        continue;
+      }
+      if (!inFence && /^#{1,6}\s*$/.test(line)) {
+        // Skip empty heading lines (no title)
+        continue;
+      }
+      if (!inFence && (/^\s*!\[[^\]]*\]\([^)]+\)\s*$/.test(line) || /^\s*\[[^\]]+\]\([^)]+\)\s*$/.test(line))) {
+        // Remove standalone image or link lines
+        continue;
+      }
+      cleaned.push(line);
+    }
+
+    return cleaned.join('\n');
+  };
+
+  const buildPagesFromSegments = (segments: MarkdownSegment[]): ParsedPage[] => {
+    return segments.map((segment, index) => {
+      const heading = segment.headingText?.trim();
+      const fallbackTitle = heading && heading.length > 0 ? heading : `Section ${index + 1}`;
+      const title = fallbackTitle || 'Imported Content';
+      let content = segment.content;
+
+      if (segment.headingLevel !== null) {
+        const lines = segment.content.split('\n');
+        if (lines.length > 0) {
+          lines.shift();
         }
-      } else {
-        // Add regular content line
-        currentContent.push(line);
+        content = lines.join('\n');
       }
-    }
 
-    // Don't forget the last page
-    if (currentPage) {
-      currentPage.content = currentContent.join('\n').trim();
-      if (currentPage.title || currentPage.content) {
-        pages.push(currentPage);
-      }
-    }
+      return {
+        title,
+        content,
+        level: segment.headingLevel ?? 0,
+      };
+    });
+  };
 
-    // If no pages were created (no headings at target level), create one page with all content
-    if (pages.length === 0 && content.trim()) {
-      pages.push({
-        title: 'Imported Content',
-        content: content.trim(),
-        level: 1
-      });
-    }
-
-    return pages;
+  const parseMarkdown = (content: string, level: number): ParsedPage[] => {
+    const cleaned = stripEmptyHeadingLines(content);
+    if (!cleaned.trim()) return [];
+    const segments = splitMarkdown(cleaned, level);
+    return buildPagesFromSegments(segments);
   };
 
   const handleContentChange = (content: string) => {

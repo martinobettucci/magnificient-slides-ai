@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, Plus, Play, Settings, Zap, FileDown, Sparkles } from 'lucide-react';
+import { ArrowLeft, Plus, Play, Settings, Zap, FileDown, Sparkles, Download } from 'lucide-react';
 import { infographicsService, Infographic, InfographicPage } from '../lib/supabase';
 import { InfographicSlideshow } from './InfographicSlideshow';
 import { MarkdownImporter } from './InfographicEditor/MarkdownImporter';
@@ -12,6 +12,230 @@ interface InfographicEditorProps {
   onBack: () => void;
   onEdit: () => void;
 }
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const buildDraftHtml = (page: InfographicPage) => {
+  const title = escapeHtml(page.title || 'Untitled page');
+  const bodyContent = page.content_markdown?.trim()
+    ? `<pre>${escapeHtml(page.content_markdown)}</pre>`
+    : '<p class="draft-empty">No content yet.</p>';
+
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${title}</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
+      body {
+        font-family: Arial, sans-serif;
+        padding: 48px;
+        color: #111827;
+        background: #ffffff;
+      }
+      h1 { font-size: 32px; margin: 0 0 24px; }
+      pre {
+        white-space: pre-wrap;
+        font-size: 16px;
+        line-height: 1.5;
+        margin: 0;
+        color: #111827;
+      }
+      .draft-badge {
+        display: inline-block;
+        margin-top: 24px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: #fde68a;
+        color: #92400e;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .draft-empty { color: #6b7280; font-size: 16px; margin: 0; }
+    </style>
+  </head>
+  <body>
+    <h1>${title}</h1>
+    ${bodyContent}
+    <div class="draft-badge">Draft - HTML not generated yet</div>
+  </body>
+</html>`;
+};
+
+const getPageExportHtml = (page: InfographicPage) => {
+  const html = page.generated_html?.trim();
+  return html ? html : buildDraftHtml(page);
+};
+
+const buildPrintDocument = (
+  doc: Document,
+  pages: { page: InfographicPage; html: string }[],
+  title: string,
+  options?: { showToolbar?: boolean },
+) => {
+  const showToolbar = options?.showToolbar ?? false;
+  const bodyClass = showToolbar ? ' class="has-toolbar"' : '';
+  const toolbar = showToolbar
+    ? `<div class="print-toolbar" role="region" aria-label="PDF export toolbar">
+        <div class="print-toolbar__title">${escapeHtml(title)}</div>
+        <div class="print-toolbar__actions">
+          <button type="button" id="print-trigger">Print / Save PDF</button>
+          <button type="button" id="close-trigger">Close</button>
+        </div>
+      </div>`
+    : '';
+
+  const toolbarScript = showToolbar
+    ? `<script>
+        (function() {
+          function requestPrint() {
+            try { window.focus(); window.print(); } catch (err) {}
+          }
+          window.__requestPrint = requestPrint;
+          var printButton = document.getElementById('print-trigger');
+          if (printButton) { printButton.addEventListener('click', requestPrint); }
+          var closeButton = document.getElementById('close-trigger');
+          if (closeButton) { closeButton.addEventListener('click', function() { window.close(); }); }
+        })();
+      </script>`
+    : '';
+
+  doc.open();
+  doc.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
+      body { background: #111827; font-family: Arial, sans-serif; }
+      #print-root { width: 100%; }
+      body.has-toolbar #print-root { margin-top: 64px; }
+      .print-toolbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 20px;
+        background: #0f172a;
+        color: #f8fafc;
+        z-index: 20;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+      }
+      .print-toolbar__title {
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      .print-toolbar__actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .print-toolbar__actions button {
+        appearance: none;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        background: #1e293b;
+        color: #f8fafc;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 8px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .print-toolbar__actions button:hover {
+        background: #334155;
+      }
+      .print-page {
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        align-items: stretch;
+        justify-content: stretch;
+        background: #ffffff;
+        page-break-after: always;
+        break-after: page;
+      }
+      .print-page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+      .print-frame {
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+      @media print {
+        @page { size: landscape; margin: 0; }
+        body { background: #ffffff; }
+        .print-page { height: 100vh; }
+        .print-toolbar { display: none; }
+        body.has-toolbar #print-root { margin-top: 0; }
+      }
+    </style>
+  </head>
+  <body${bodyClass}>
+    ${toolbar}
+    <div id="print-root"></div>
+    ${toolbarScript}
+  </body>
+</html>`);
+  doc.close();
+
+  const root = doc.getElementById('print-root');
+  if (!root) {
+    return;
+  }
+
+  pages.forEach(({ page, html }) => {
+    const wrapper = doc.createElement('div');
+    wrapper.className = 'print-page';
+
+    const frame = doc.createElement('iframe');
+    frame.className = 'print-frame';
+    frame.title = page.title || 'Infographic page';
+    frame.srcdoc = html;
+
+    wrapper.appendChild(frame);
+    root.appendChild(wrapper);
+  });
+};
+
+const waitForFrames = async (frames: HTMLIFrameElement[]) => {
+  if (frames.length === 0) return;
+  await Promise.all(
+    frames.map(
+      (frame) =>
+        new Promise<void>((resolve) => {
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            resolve();
+          };
+          if (frame.contentDocument?.readyState === 'complete') {
+            finish();
+            return;
+          }
+          frame.addEventListener('load', finish, { once: true });
+          window.setTimeout(finish, 3000);
+        }),
+    ),
+  );
+};
 
 export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEditorProps) {
   const [pages, setPages] = useState<InfographicPage[]>([]);
@@ -27,6 +251,7 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
   const selectedPageRef = useRef<InfographicPage | null>(null);
   const [activeQueueCount, setActiveQueueCount] = useState(0);
   const [triggeringWorker, setTriggeringWorker] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [showMarkdownImporter, setShowMarkdownImporter] = useState(false);
   const pollingIntervalRef = useRef<number | null>(null);
   const [pageFilter, setPageFilter] = useState<'all' | 'draft' | 'processing' | 'generated'>('all');
@@ -366,6 +591,61 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
     }
   };
 
+  const handleExportPdf = async () => {
+    const sortedPages = [...pages].sort(
+      (a, b) => (a.page_order ?? 0) - (b.page_order ?? 0),
+    );
+    const generatedPages = sortedPages.filter((page) => page.generated_html?.trim());
+
+    if (generatedPages.length === 0) {
+      setError('No generated pages available to export yet.');
+      return;
+    }
+
+    setError(null);
+    setExportingPdf(true);
+
+    let printWindow: Window | null = null;
+    try {
+      printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        throw new Error('Popup blocked. Allow pop-ups to export the PDF.');
+      }
+
+      const exportPages = generatedPages.map((page) => ({
+        page,
+        html: getPageExportHtml(page),
+      }));
+
+      buildPrintDocument(
+        printWindow.document,
+        exportPages,
+        `${infographic.name} - PDF Export`,
+        { showToolbar: true },
+      );
+
+      const frames = Array.from(printWindow.document.querySelectorAll('iframe'));
+      await waitForFrames(frames);
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+
+      const requestPrint = (printWindow as Window & { __requestPrint?: () => void }).__requestPrint;
+      if (requestPrint) {
+        requestPrint();
+      } else {
+        printWindow.focus();
+        printWindow.print();
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to export PDF.';
+      setError(message);
+      if (printWindow && !printWindow.closed) {
+        printWindow.close();
+      }
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   const handleSelectPageId = (pageId: string, selected: boolean) => {
     setSelectedPageIds(prev => {
       const newSet = new Set(prev);
@@ -485,6 +765,20 @@ export function InfographicEditor({ infographic, onBack, onEdit }: InfographicEd
               <Play className="w-4 h-4" />
               <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap">
                 {allPagesGenerated ? 'Ready to Present!' : 'Slideshow'}
+              </span>
+            </button>
+            <button
+              onClick={handleExportPdf}
+              disabled={exportingPdf}
+              className="group inline-flex items-center justify-center px-3 py-2.5 h-10 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50 transition-all duration-300 font-medium overflow-hidden"
+            >
+              {exportingPdf ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              <span className="max-w-0 group-hover:max-w-xs transition-all duration-300 overflow-hidden whitespace-nowrap ml-0 group-hover:ml-2">
+                Export PDF
               </span>
             </button>
             {activeQueueCount > 0 && (

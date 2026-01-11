@@ -153,8 +153,9 @@ const GENERATION_HINT_PROMPTS: Record<string, string> = {
   introduction: 'Craft a captivating introduction that clearly states the topic, why it matters, and the expected outcomes for the audience.',
   agenda: 'Include a concise agenda/sommaire that lists the main sections or talking points of the presentation.',
   section_break: 'Design a bold transition slide that introduces the next section with minimal text and strong visuals.',
+  section_title: 'Create a section title slide: one strong title line, bold styling, optional short kicker/subtitle; no body content.',
   dashboard: 'Create a data-rich dashboard with charts, key metrics, and calls-outs. Prioritize clarity, hierarchy, and legends.',
-  timeline: 'Use a timeline or roadmap layout to communicate milestones, phases, or a chronological story.',
+  timeline: 'Use a timeline or roadmap layout to communicate milestones, phases, or a chronological story. Labels must never overlap; stagger lanes, increase spacing, wrap text, or use callouts/leader lines to keep every label legible.',
   process: 'Display a step-by-step process or workflow with numbered stages, icons, and short descriptions.',
   explainer: 'Explain a concept with a simplified diagram, labeled components, and brief supporting text.',
   comparison: 'Compare multiple options (e.g., plans, competitors) side-by-side using tables or cards and highlight key differences.',
@@ -174,7 +175,7 @@ const GENERATION_HINT_PROMPTS: Record<string, string> = {
   quote: 'Feature a powerful quote or testimonial with strong typography and supporting imagery.',
   faq: 'Provide a clear FAQ with the top questions and succinct answers, using an easy-to-scan layout.',
   conclusion: 'Summarize the key takeaways and reinforce the core message, optionally listing next steps.',
-  call_to_action: 'End with a compelling call to action, highlighting what the audience should do next along with contact or follow-up details.',
+  call_to_action: 'End with a compelling call to action using text emphasis and contact or follow-up details; avoid buttons or button-styled elements.',
 };
 console.log('Queue worker starting with environment:', {
   hasSupabaseUrl: !!SUPABASE_URL,
@@ -366,12 +367,16 @@ Requirements:
 9. Ensure high contrast and readability.
 10. Focus primarily on the supplied page content; use the project context only as supporting tone or framing guidance.
 11. The page should be self-contained (single HTML file that opens directly in a browser; only the allowed CDNs in the system instructions may be used, and no other external URLs).
-12. Chart.js safety (mandatory whenever Chart.js is used):
+12. Do NOT include buttons or button-like elements (including <button> or button-styled links). These are presentation slides, not interactive UIs.
+13. Chart.js safety (mandatory whenever Chart.js is used):
     - Never place a <canvas> chart directly in an auto-height container.
     - Always wrap each chart canvas in a bounded-height container (explicit height), and make the canvas fill it.
     - Add a small global Chart.js guard (defaults + auto-wrap) to prevent infinite resize loops.
+14. Timeline labeling (mandatory if a timeline is used): ensure labels never overlap; use staggered rows/lanes, adequate spacing, multi-line labels, and/or leader lines. Reduce label density if needed.
+15. DO NOT add any designer commentary or meta-explanations in the visible HTML (e.g., “labels are arranged on two lines…”). Only include the actual slide content; no notes about layout decisions.
+16. DO NOT invent or hallucinate data; only use content provided in the current prompt/context.
 ${userComment ? `
-13. IMPORTANT: Address the user's specific feedback: ${userComment}` : ''}`;
+17. IMPORTANT: Address the user's specific feedback: ${userComment}` : ''}`;
 
   const client = new OpenAIJsonClient({ apiKey: OPENAI_API_KEY, defaultModel: OPENAI_GENERATION_MODEL });
 
@@ -385,13 +390,14 @@ Design guidelines:
 • Visual polish: clean, spacious, modern typography.
 • Use Tailwind CSS via CDN (<script src="https://cdn.tailwindcss.com"></script>).
 • Include Lucide icons via CDN (<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>) and initialize with \`lucide.createIcons()\`.
-• For mathematical equations (when applicable to context): Use MathJax via CDN (<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script> and <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>) to render beautiful LaTeX equations. Configure MathJax with proper delimiters and display options.
+• For mathematical equations (when applicable to context): Use MathJax via CDN (<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>) to render beautiful LaTeX equations. Configure MathJax with proper delimiters and display options.
 • For animations (when applicable): Use Framer Motion via CDN (<script src="https://cdn.jsdelivr.net/npm/framer-motion@latest/dist/framer-motion.js"></script>) to create smooth, professional animations and transitions where appropriate.
 • Bring data to life with interactive charts with Chart.js via CDN (<script src="https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.umd.min.js"></script>) and timelines using vis-timeline via CDN (https://unpkg.com/moment@latest, https://unpkg.com/vis-data@latest/peer/umd/vis-data.min.js, https://unpkg.com/vis-timeline@latest/peer/umd/vis-timeline-graph2d.min.js, https://unpkg.com/vis-timeline/styles/vis-timeline-graph2d.min.css).
 • Source high-resolution royalty-free hero/illustration images from Pexels URLs that match the page topic and add descriptive alt text.
 • Employ semantic HTML5 sections (header, main, section, article, figure, footer) and ARIA labels for accessibility.
 • Ensure a mobile-first, responsive layout using Flexbox or CSS Grid with sensible breakpoints.
 • Keep JavaScript scoped at the end of <body>; separate content, presentation, and behavior.
+• Never include buttons or button-styled links; this is a presentation slide, not an interactive UI.
 • Do NOT include any explanatory text outside the JSON object.
 • Never add an external link to a resource outside the CDNs and image sources explicitly requested above. The page must remain a single-file HTML that opens directly in a browser.
 • Make sure the page renders correctly when opened directly in a browser.
