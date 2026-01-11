@@ -156,11 +156,21 @@ const GENERATION_HINT_PROMPTS: Record<string, string> = {
   dashboard: 'Create a data-rich dashboard with charts, key metrics, and calls-outs. Prioritize clarity, hierarchy, and legends.',
   timeline: 'Use a timeline or roadmap layout to communicate milestones, phases, or a chronological story.',
   process: 'Display a step-by-step process or workflow with numbered stages, icons, and short descriptions.',
+  explainer: 'Explain a concept with a simplified diagram, labeled components, and brief supporting text.',
   comparison: 'Compare multiple options (e.g., plans, competitors) side-by-side using tables or cards and highlight key differences.',
+  problem_solution: 'Present the core problem, underlying causes, and the solution with clear outcomes or impact.',
+  feature_benefits: 'Map features to benefits using icon-led callouts and short proof points.',
   persona: 'Present a user persona with demographics, goals, pain points, and relevant context in a visually engaging layout.',
+  journey_map: 'Visualize a user journey with stages, touchpoints, emotions, and opportunities.',
   swot: 'Structure the slide around a SWOT analysis (Strengths, Weaknesses, Opportunities, Threats) with balanced emphasis on each quadrant.',
   budget: 'Show budget allocation, costs, or financial forecasts using tables/graphs and highlight the most important figures.',
+  risk_mitigation: 'Highlight key risks with likelihood/impact and paired mitigation actions in a structured layout.',
+  case_study: 'Tell a concise case study: context, approach, and measurable results.',
   technology: 'Illustrate the technical architecture, stack, or integrations with diagrams, icons, and annotations.',
+  org_chart: 'Show the organizational hierarchy with roles, teams, and clear reporting lines.',
+  cv_resume: 'Lay out a professional CV/resume with summary, skills, experience timeline, and education.',
+  funnel: 'Show conversion stages in a funnel with drop-offs and key metrics per stage.',
+  okr_goals: 'Present objectives and key results with owners, metrics, and timeframes.',
   quote: 'Feature a powerful quote or testimonial with strong typography and supporting imagery.',
   faq: 'Provide a clear FAQ with the top questions and succinct answers, using an easy-to-scan layout.',
   conclusion: 'Summarize the key takeaways and reinforce the core message, optionally listing next steps.',
@@ -290,6 +300,7 @@ async function generateHtmlWithOpenAI(params: {
     userComment,
     generationHints = [],
   } = params;
+
   let prompt = `
 You are an expert infographic designer. Create a beautiful, modern HTML page for an infographic slide.
 
@@ -326,6 +337,7 @@ ${hintNarrative}
 
 Incorporate every hint above. Blend them gracefully in one cohesive slide without fragmenting the content.`;
   }
+
   // If this is a regeneration with user feedback, include context
   if (previousHtml && userComment) {
     prompt += `
@@ -339,22 +351,30 @@ Previous Version Context:
 
 Please take the user's feedback into account and improve the page accordingly. The user wants you to modify the existing design based on their specific requests.`;
   }
+
   prompt += `
 
 Requirements:
-1. Create a complete HTML page with embedded CSS
-2. Use modern, clean design principles
-3. Make it visually appealing with proper typography, colors, and spacing
-4. Include the content in a structured, easy-to-read format
-5. Use CSS Grid or Flexbox for layout
-6. Make it responsive
-7. Follow the style guidelines provided
-8. Use appropriate icons, charts, or visual elements where relevant
-9. Ensure high contrast and readability
+1. Create a complete HTML page with embedded CSS.
+2. Use modern, clean design principles.
+3. Make it visually appealing with proper typography, colors, and spacing.
+4. Include the content in a structured, easy-to-read format.
+5. Use CSS Grid or Flexbox for layout.
+6. Make it responsive.
+7. Follow the style guidelines provided.
+8. Use appropriate icons, charts, or visual elements where relevant.
+9. Ensure high contrast and readability.
 10. Focus primarily on the supplied page content; use the project context only as supporting tone or framing guidance.
-11. The page should be self-contained (no external dependencies)${userComment ? `
-11. IMPORTANT: Address the user's specific feedback: ${userComment}` : ''}`;
+11. The page should be self-contained (single HTML file that opens directly in a browser; only the allowed CDNs in the system instructions may be used, and no other external URLs).
+12. Chart.js safety (mandatory whenever Chart.js is used):
+    - Never place a <canvas> chart directly in an auto-height container.
+    - Always wrap each chart canvas in a bounded-height container (explicit height), and make the canvas fill it.
+    - Add a small global Chart.js guard (defaults + auto-wrap) to prevent infinite resize loops.
+${userComment ? `
+13. IMPORTANT: Address the user's specific feedback: ${userComment}` : ''}`;
+
   const client = new OpenAIJsonClient({ apiKey: OPENAI_API_KEY, defaultModel: OPENAI_GENERATION_MODEL });
+
   const result = await client.generateJSON<{ generatedHtml: string }>({
     model: OPENAI_GENERATION_MODEL,
     system: `You are an expert infographic & data-visualization designer.
@@ -367,15 +387,29 @@ Design guidelines:
 • Include Lucide icons via CDN (<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>) and initialize with \`lucide.createIcons()\`.
 • For mathematical equations (when applicable to context): Use MathJax via CDN (<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script> and <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>) to render beautiful LaTeX equations. Configure MathJax with proper delimiters and display options.
 • For animations (when applicable): Use Framer Motion via CDN (<script src="https://cdn.jsdelivr.net/npm/framer-motion@latest/dist/framer-motion.js"></script>) to create smooth, professional animations and transitions where appropriate.
-• Bring data to life with interactive charts with Chart.js via CDN(<script src="https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.umd.min.js"></script>) and timelines using vis-timeline via CDN (https://unpkg.com/moment@latest,https://unpkg.com/vis-data@latest/peer/umd/vis-data.min.js,https://unpkg.com/vis-timeline@latest/peer/umd/vis-timeline-graph2d.min.js,https://unpkg.com/vis-timeline/styles/vis-timeline-graph2d.min.css).
+• Bring data to life with interactive charts with Chart.js via CDN (<script src="https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.umd.min.js"></script>) and timelines using vis-timeline via CDN (https://unpkg.com/moment@latest, https://unpkg.com/vis-data@latest/peer/umd/vis-data.min.js, https://unpkg.com/vis-timeline@latest/peer/umd/vis-timeline-graph2d.min.js, https://unpkg.com/vis-timeline/styles/vis-timeline-graph2d.min.css).
 • Source high-resolution royalty-free hero/illustration images from Pexels URLs that match the page topic and add descriptive alt text.
 • Employ semantic HTML5 sections (header, main, section, article, figure, footer) and ARIA labels for accessibility.
 • Ensure a mobile-first, responsive layout using Flexbox or CSS Grid with sensible breakpoints.
 • Keep JavaScript scoped at the end of <body>; separate content, presentation, and behavior.
 • Do NOT include any explanatory text outside the JSON object.
-• Never badd an external link to a ressource, under any circonstance: the page must be self contained.
+• Never add an external link to a resource outside the CDNs and image sources explicitly requested above. The page must remain a single-file HTML that opens directly in a browser.
 • Make sure the page renders correctly when opened directly in a browser.
-• Make sure the page always ends with a footer mentionning "Presentation made by InfogrAIphics by P2Enjoy SAS - Copyright 2025"`,
+• Make sure the page always ends with a footer mentioning "Presentation made by InfogrAIphics by P2Enjoy SAS - Copyright 2025".
+
+Chart.js Safety Contract (mandatory whenever Chart.js is used):
+1) Every chart canvas MUST be inside a bounded-height container.
+   - Example wrapper: <div class="chartjs-box"><canvas ...></canvas></div>
+2) Add global CSS (if any chart exists):
+   - canvas { display: block; }
+   - .chartjs-box { position: relative; height: var(--chart-h, 260px); min-height: 180px; }
+   - .chartjs-box > canvas { display: block; width: 100% !important; height: 100% !important; }
+3) Prefer Chart.js option \`maintainAspectRatio: true\` by default.
+   - If \`maintainAspectRatio: false\` is used, the bounded-height wrapper is mandatory.
+4) Add a small runtime guard script after Chart.js is loaded (and only if Chart.js is used):
+   - Set \`Chart.defaults.responsive = true\`
+   - Set \`Chart.defaults.maintainAspectRatio = true\`
+   - Register a lightweight plugin that auto-wraps a canvas in \`.chartjs-box\` when \`maintainAspectRatio: false\` and the parent has no effective height.`,
     user: prompt,
     schemaName: 'infographic_html',
     schema: {

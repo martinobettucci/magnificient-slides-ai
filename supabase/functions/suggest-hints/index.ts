@@ -40,14 +40,34 @@ const GENERATION_HINT_OPTIONS = [
     description: 'Break down a workflow into clear steps with brief descriptors and supporting icons.',
   },
   {
+    value: 'explainer',
+    label: 'Explainer',
+    description: 'Clarify a concept with a simplified diagram, labeled components, and short supporting text.',
+  },
+  {
     value: 'comparison',
     label: 'Comparison',
     description: 'Compare options side-by-side with a visual layout that emphasises differentiators.',
   },
   {
+    value: 'problem_solution',
+    label: 'Problem / Solution',
+    description: 'Frame the pain points, root causes, and proposed solution with clear outcomes.',
+  },
+  {
+    value: 'feature_benefits',
+    label: 'Features & Benefits',
+    description: 'Map product features to user benefits using icon-driven callouts and short proof points.',
+  },
+  {
     value: 'persona',
     label: 'Persona',
     description: 'Present the target audience with needs, pain points, and motivating context.',
+  },
+  {
+    value: 'journey_map',
+    label: 'Journey Map',
+    description: 'Visualize stages, touchpoints, emotions, and opportunities across a user journey.',
   },
   {
     value: 'swot',
@@ -60,9 +80,39 @@ const GENERATION_HINT_OPTIONS = [
     description: 'Explain costs or projections with tabular or chart-based visuals and clear highlights.',
   },
   {
+    value: 'risk_mitigation',
+    label: 'Risk & Mitigation',
+    description: 'List key risks with likelihood/impact and paired mitigation actions.',
+  },
+  {
+    value: 'case_study',
+    label: 'Case Study',
+    description: 'Tell a short story: context, approach, and measurable results.',
+  },
+  {
     value: 'technology',
     label: 'Technology',
     description: 'Visualise the technical architecture, stack, or integrations with a diagram and callouts.',
+  },
+  {
+    value: 'org_chart',
+    label: 'Org Chart',
+    description: 'Show reporting structure with role blocks, hierarchy, and clear groupings.',
+  },
+  {
+    value: 'cv_resume',
+    label: 'CV / Resume',
+    description: 'Lay out a professional profile with summary, skills, experience, and education.',
+  },
+  {
+    value: 'funnel',
+    label: 'Funnel',
+    description: 'Show stage-by-stage conversion with drop-offs and key metrics.',
+  },
+  {
+    value: 'okr_goals',
+    label: 'OKRs / Goals',
+    description: 'Present objectives with measurable key results, owners, and timeframes.',
   },
   {
     value: 'quote',

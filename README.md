@@ -9,6 +9,19 @@
 5. Launch the edge functions with `npm run supabase:functions:serve` (runs in the background; stop later with `npm run supabase:functions:stop`).
 6. Start the Vite dev server with `npm run dev`.
 
+## Quick Run
+
+Run everything with one command:
+
+```bash
+./runMe.sh
+```
+
+The script starts Supabase, launches edge functions, and runs the Vite dev server.
+It waits until you interrupt it, then stops the webapp, functions, and Supabase
+stack cleanly. Make sure you've run `npm install` and `npm run supabase:jwt`,
+and that `supabase/.env` includes any required secrets (like `OPENAI_API_KEY`).
+
 ## Local Supabase Development
 
 This project uses Supabase for data and edge functions. The repository now includes everything needed to run Supabase locally for development.
@@ -26,6 +39,7 @@ This project uses Supabase for data and edge functions. The repository now inclu
 - The Supabase CLI stores containers and generated secrets in the `.supabase/` directory (ignored by Git).
 - The first time you clone the project, run `npm run supabase:jwt` **before** `npm run supabase:start`. This creates `signing_keys.json`, which Supabase Auth uses for a stable JWT signing secret.
 - Keep `npm run supabase:start` active and run `npm run supabase:functions:serve` after it finishes starting so the AI edge functions are reachable. Stop the functions with `npm run supabase:functions:stop` when you're done.
+- Supabase Studio is available after the stack starts at `http://localhost:54323` (from `supabase/config.toml`).
 
 ### Edge Function Secrets
 

@@ -31,14 +31,34 @@ export const GENERATION_HINT_OPTIONS = [
     description: 'Expose un workflow étape par étape avec pictos et micro-descriptions.',
   },
   {
+    value: 'explainer',
+    label: 'Explication',
+    description: 'Clarifie un concept avec un schéma simple, des éléments annotés et un texte court.',
+  },
+  {
     value: 'comparison',
     label: 'Comparatif',
     description: 'Compare des options côte à côte et souligne les différences majeures.',
   },
   {
+    value: 'problem_solution',
+    label: 'Problème / Solution',
+    description: 'Expose le problème, ses causes, puis la solution et l’impact attendu.',
+  },
+  {
+    value: 'feature_benefits',
+    label: 'Fonctionnalités & bénéfices',
+    description: 'Relie les fonctionnalités aux bénéfices via des callouts et preuves courtes.',
+  },
+  {
     value: 'persona',
     label: 'Persona',
     description: 'Dresse le portrait d’une audience cible avec besoins et pain points.',
+  },
+  {
+    value: 'journey_map',
+    label: 'Journey map',
+    description: 'Visualise les étapes, touchpoints, émotions et opportunités d’un parcours.',
   },
   {
     value: 'swot',
@@ -52,9 +72,39 @@ export const GENERATION_HINT_OPTIONS = [
     description: 'Présente allocations financières, projections et points d’attention.',
   },
   {
+    value: 'risk_mitigation',
+    label: 'Risques & mitigation',
+    description: 'Liste les risques avec probabilité/impact et actions de mitigation.',
+  },
+  {
+    value: 'case_study',
+    label: 'Cas client',
+    description: 'Raconte le contexte, l’approche et les résultats mesurables.',
+  },
+  {
     value: 'technology',
     label: 'Technologie',
     description: 'Visualise l’architecture ou la stack technique avec un schéma clair.',
+  },
+  {
+    value: 'org_chart',
+    label: 'Organigramme',
+    description: 'Montre la hiérarchie avec rôles, équipes et liens de reporting.',
+  },
+  {
+    value: 'cv_resume',
+    label: 'CV / Résumé',
+    description: 'Structure profil, compétences, expériences, formation et contacts.',
+  },
+  {
+    value: 'funnel',
+    label: 'Funnel',
+    description: 'Montre les étapes de conversion avec drop-offs et KPIs.',
+  },
+  {
+    value: 'okr_goals',
+    label: 'OKRs / Objectifs',
+    description: 'Présente objectifs, key results, owners et échéances.',
   },
   {
     value: 'quote',

@@ -197,7 +197,7 @@ Create detailed style guidelines that help AI generate beautiful, consistent inf
           required: ['styleGuidelines', 'colorPalette', 'typography'],
           additionalProperties: false
         },
-        maxOutputTokens: 2000,
+        maxOutputTokens: 4000,
       });
     } catch (parseError) {
       return new Response(
